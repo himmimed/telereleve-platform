@@ -1,0 +1,96 @@
+# CEAC Télérelève Platform
+
+Remote meter reading platform for **CEAC Maroc** (Fès), a manufacturer of electricity and water meters.
+Smart meters publish their readings over **MQTT**; the platform stores them as **time series**, detects
+anomalies (fault, fraud, abnormal consumption) and shows everything on a web dashboard.
+
+Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
+
+> Status: **Phase 0 (setup) written, backend integration tests pending; frontend built ahead of the
+> backend, on a simulated API.** See [Roadmap](#roadmap).
+
+## Tech stack
+
+| Layer | Technologies |
+|---|---|
+| Backend | Java 21, Spring Boot 3.5 (Web, Data JPA, Validation, Actuator), Flyway |
+| Messaging | Eclipse Mosquitto (MQTT), Spring Integration MQTT |
+| Database | PostgreSQL 16 + TimescaleDB |
+| Frontend | Angular 22, Angular Material 3, Chart.js, Leaflet, Vitest |
+| Tests | JUnit 5, Mockito, AssertJ, Testcontainers, JaCoCo |
+| DevOps | Docker, Docker Compose, GitHub Actions |
+
+## Quick start
+
+Prerequisite: **Docker** (Docker Desktop on Windows/macOS). Java and Node are only needed to develop
+outside containers.
+
+```sh
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+# edit .env and set your own passwords
+docker compose up --build
+```
+
+| Address | Service |
+|---|---|
+| <http://localhost:8080/actuator/health> | Backend health |
+| <http://localhost:8025> | Mailpit (e-mails sent by the platform) |
+| `localhost:1883` | MQTT broker (authenticated) |
+| `localhost:5432` | PostgreSQL / TimescaleDB |
+
+Stop with `docker compose down` (add `-v` to delete the data volumes).
+
+## Developing locally
+
+Start the infrastructure only, then run the backend from your IDE or the command line:
+
+```sh
+docker compose up -d timescaledb mosquitto mailpit
+cd backend
+./mvnw spring-boot:run      # reads ../.env automatically
+```
+
+Tests:
+
+```sh
+./mvnw test      # unit tests (no Docker needed)
+./mvnw verify    # unit + integration tests with Testcontainers (Docker required) + coverage report
+```
+
+Frontend (Node 24):
+
+```sh
+cd frontend
+npm install
+npm start        # http://localhost:4200, demo accounts admin / operateur / technicien, password demo1234
+```
+
+The frontend currently runs on a simulated API in the browser (`useMockApi` in
+`frontend/src/environments/environment.ts`); see [frontend/README.md](frontend/README.md).
+
+## Repository layout
+
+```
+backend/     Spring Boot application (package ma.ceac.telereleve)
+simulator/   Smart meter simulator (standalone Java 21)
+frontend/    Angular application
+docker/      Infrastructure configuration (Mosquitto)
+docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
+```
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Technical decisions](docs/decisions.md)
+- [Test report](docs/test-report.md)
+- [Guide utilisateur (FR)](docs/user-guide.md)
+
+## Roadmap
+
+- [ ] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI (integration tests not yet run)
+- [ ] Phase 1 - Meters and simulator
+- [ ] Phase 2 - MQTT ingestion and consumption
+- [ ] Phase 3 - Anomaly detection and alerts
+- [ ] Phase 4 - Security (JWT, roles)
+- [ ] Phase 5 - Angular frontend: all pages built on the simulated API; wiring to the real API remains
+- [ ] Phase 6 - Performance, documentation, finalisation
