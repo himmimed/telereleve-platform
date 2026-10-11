@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: telereleve
+  config:
+    # When run locally (mvnw spring-boot:run), read the repository's .env so local runs and
+    # docker compose share one source of configuration. Real environment variables always win,
+    # and the file is optional, so containers and CI are unaffected.
+    import: "optional:file:.env[.properties],optional:file:../.env[.properties]"
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:telereleve}
+    username: ${POSTGRES_USER:telereleve}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema; Hibernate only checks that entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Component names and status only (db: UP...), no connection details.
+      show-components: always
+      probes:
+        enabled: true
