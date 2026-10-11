@@ -1,0 +1,27 @@
+# Secrets (copy .env.example to .env locally)
+.env
+
+# Java / Maven
+target/
+*.class
+*.log
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local Claude Code / desktop preview configuration
+.claude/
