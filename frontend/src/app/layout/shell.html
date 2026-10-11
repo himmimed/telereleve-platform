@@ -1,0 +1,84 @@
+<aside class="sidebar" [attr.aria-hidden]="layout() === 'mobile' && !drawerOpen() ? 'true' : null">
+  <a class="brand" routerLink="/tableau-de-bord" aria-label="Télérelève CEAC, tableau de bord">
+    <span class="brand-mark" aria-hidden="true">
+      <mat-icon fontSet="ph" fontIcon="ph-broadcast" />
+    </span>
+    <span class="brand-text">
+      <strong>Télérelève</strong>
+      <small>CEAC Maroc</small>
+    </span>
+  </a>
+
+  <nav aria-label="Navigation principale">
+    @for (item of nav(); track item.path) {
+      <a
+        class="nav-link"
+        [routerLink]="item.path"
+        routerLinkActive="active"
+        #rla="routerLinkActive"
+        [attr.aria-current]="rla.isActive ? 'page' : null"
+        [matTooltip]="item.label"
+        matTooltipPosition="right"
+        [matTooltipDisabled]="layout() !== 'rail'"
+      >
+        <mat-icon fontSet="ph" [fontIcon]="item.icon" aria-hidden="true" />
+        <span class="nav-label">{{ item.label }}</span>
+        @if (item.badge && openAlerts() > 0) {
+          <span class="nav-count num" [attr.aria-label]="openAlerts() + ' alertes ouvertes'">{{ openAlerts() }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <div class="user">
+    <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+    <span class="user-text">
+      <strong>{{ auth.fullName() }}</strong>
+      <small>{{ roleLabel() }}</small>
+    </span>
+    <button
+      mat-icon-button
+      type="button"
+      (click)="logout()"
+      aria-label="Se déconnecter"
+      matTooltip="Se déconnecter"
+    >
+      <mat-icon fontSet="ph" fontIcon="ph-sign-out" />
+    </button>
+  </div>
+</aside>
+
+@if (layout() === 'mobile' && drawerOpen()) {
+  <div class="scrim" (click)="drawerOpen.set(false)" aria-hidden="true"></div>
+}
+
+<div class="main">
+  <header class="topbar">
+    @if (layout() === 'mobile') {
+      <button mat-icon-button type="button" (click)="drawerOpen.set(true)" aria-label="Ouvrir le menu">
+        <mat-icon fontSet="ph" fontIcon="ph-list" />
+      </button>
+      <span class="topbar-brand">Télérelève</span>
+    }
+    <span class="spacer"></span>
+    @if (mockMode) {
+      <span class="mock-flag" matTooltip="Les données affichées sont générées par un simulateur dans le navigateur, en attendant l’API.">
+        <mat-icon fontSet="ph" fontIcon="ph-flask" aria-hidden="true" />
+        Données simulées
+      </span>
+    }
+    <button
+      mat-icon-button
+      type="button"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Passer en mode clair' : 'Passer en mode sombre'"
+      [matTooltip]="theme.isDark() ? 'Mode clair' : 'Mode sombre'"
+    >
+      <mat-icon fontSet="ph" [fontIcon]="theme.isDark() ? 'ph-sun' : 'ph-moon'" />
+    </button>
+  </header>
+
+  <main class="content" id="contenu">
+    <router-outlet />
+  </main>
+</div>
