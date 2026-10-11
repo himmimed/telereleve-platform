@@ -1,0 +1,217 @@
+<a class="back" routerLink="/compteurs">
+  <mat-icon fontSet="ph" fontIcon="ph-arrow-left" aria-hidden="true" />
+  Compteurs
+</a>
+
+@switch (meter().status) {
+  @case ('error') {
+    <div class="panel">
+      <app-empty-state icon="ph-gauge" title="Compteur introuvable" text="Ce compteur n’existe pas ou n’a pas pu être chargé.">
+        <a mat-stroked-button routerLink="/compteurs">Retour à la liste</a>
+      </app-empty-state>
+    </div>
+  }
+  @case ('loading') {
+    <div class="head">
+      <div class="head-titles">
+        <app-skeleton height="30px" width="220px" />
+        <app-skeleton height="16px" width="300px" />
+      </div>
+    </div>
+    <div class="top-grid">
+      <app-skeleton height="260px" />
+      <app-skeleton height="260px" />
+    </div>
+  }
+  @case ('ready') {
+    @if (details(); as m) {
+      <header class="head">
+        <div class="head-titles">
+          <div class="title-row">
+            <h1 class="mono">{{ m.serial }}</h1>
+            @if (health(); as h) {
+              <app-map-status [status]="h" />
+            }
+            @if (m.status === 'INACTIVE') {
+              <app-badge label="Inactif" />
+            }
+          </div>
+          <p class="muted subtitle">
+            <app-meter-type [type]="m.type" />
+            <span>{{ m.clientName }}</span>
+          </p>
+        </div>
+        <div class="head-actions">
+          <button mat-stroked-button type="button" (click)="exportCsv()" [disabled]="exporting()">
+            <mat-icon fontSet="ph" fontIcon="ph-download-simple" />
+            Exporter CSV
+          </button>
+          @if (auth.role() === 'ADMIN') {
+            <button mat-flat-button type="button" (click)="edit()">
+              <mat-icon fontSet="ph" fontIcon="ph-pencil-simple" />
+              Modifier
+            </button>
+          }
+        </div>
+      </header>
+
+      <div class="top-grid">
+        <!-- Meter information + location -->
+        <section class="panel info" aria-labelledby="info-title">
+          <div class="info-body">
+            <h2 id="info-title" class="panel-title">Informations</h2>
+            <dl>
+              <div><dt>Client</dt><dd>{{ m.clientName }}</dd></div>
+              <div><dt>Adresse</dt><dd>{{ m.address }}</dd></div>
+              <div><dt>Coordonnées</dt><dd class="num">{{ m.latitude | num: 5 : 5 }}, {{ m.longitude | num: 5 : 5 }}</dd></div>
+              <div><dt>Intervalle de relève</dt><dd><span class="num">{{ m.readingIntervalMin }}</span> min</dd></div>
+              <div><dt>Mise en service</dt><dd>{{ m.createdAt | dateTime }}</dd></div>
+              <div><dt>Statut</dt><dd>{{ statusLabel[m.status] }}</dd></div>
+            </dl>
+          </div>
+          <div #map class="mini-map" role="img" [attr.aria-label]="'Emplacement du compteur ' + m.serial"></div>
+        </section>
+
+        <!-- Last reading -->
+        <section class="panel reading" aria-labelledby="reading-title">
+          <h2 id="reading-title" class="panel-title">Dernière relève</h2>
+          @if (m.lastReading; as r) {
+            <p class="index">
+              <span class="num">{{ r.index | num: 3 : 3 }}</span>
+              <span class="unit">{{ unit() }}</span>
+            </p>
+            <p class="muted when" [title]="r.timestamp | dateTime">Reçue {{ r.timestamp | relative }}</p>
+
+            <dl class="metrics">
+              @if (r.voltage !== null) {
+                <div>
+                  <dt>Tension</dt>
+                  <dd>
+                    <span class="num">{{ r.voltage | num: 1 : 1 }} V</span>
+                    <app-badge
+                      [label]="voltageOk() ? 'Dans la plage' : 'Hors plage'"
+                      [tone]="voltageOk() ? 'ok' : 'medium'"
+                      [icon]="voltageOk() ? null : 'ph-warning'"
+                    />
+                  </dd>
+                </div>
+              }
+              @if (radio(); as s) {
+                <div>
+                  <dt>Signal radio</dt>
+                  <dd>
+                    <span class="num">{{ s.dbm }} dBm</span>
+                    <span class="muted">{{ s.quality }}</span>
+                  </dd>
+                </div>
+              }
+              <div>
+                <dt>Alertes ouvertes</dt>
+                <dd><span class="num">{{ m.openAlerts.length }}</span></dd>
+              </div>
+            </dl>
+          } @else {
+            <app-empty-state icon="ph-wifi-slash" title="Aucune relève reçue" text="Ce compteur n’a encore transmis aucune donnée." />
+          }
+        </section>
+      </div>
+
+      <!-- Consumption -->
+      <section class="panel chart-panel" aria-labelledby="consumption-title">
+        <header class="panel-head">
+          <div>
+            <h2 id="consumption-title" class="panel-title">Consommation</h2>
+            @if (consumption(); as c) {
+              @if (c.status === 'ready') {
+                <p class="muted panel-sub">
+                  <span class="num">{{ c.value.total | num: (m.type === 'WATER' ? 2 : 1) }}</span> {{ unit() }} sur {{ periodCaption() }}
+                </p>
+              }
+            }
+          </div>
+          <mat-button-toggle-group
+            [value]="period()"
+            (change)="period.set($event.value)"
+            hideSingleSelectionIndicator
+            aria-label="Période"
+          >
+            @for (p of periods; track p.key) {
+              <mat-button-toggle [value]="p.key">{{ p.label }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+        </header>
+
+        @switch (consumption().status) {
+          @case ('ready') {
+            <app-consumption-chart
+              [points]="chartPoints()"
+              [unit]="unit()"
+              [kind]="period() === '24h' ? 'line' : 'bar'"
+              [decimals]="m.type === 'WATER' ? 3 : 2"
+              [ariaLabel]="'Consommation du compteur ' + m.serial + ' sur ' + periodCaption()"
+            />
+          }
+          @case ('error') {
+            <app-empty-state icon="ph-chart-bar" title="Consommation indisponible" text="Les données de consommation n’ont pas pu être chargées." />
+          }
+          @default {
+            <app-skeleton height="280px" />
+          }
+        }
+      </section>
+
+      <!-- Alert history -->
+      <section class="panel" aria-labelledby="history-title">
+        <header class="panel-head padded">
+          <h2 id="history-title" class="panel-title">Historique des alertes</h2>
+        </header>
+        @switch (alerts().status) {
+          @case ('ready') {
+            @if (alertRows()?.length) {
+              <div class="table-wrap">
+                <table mat-table [dataSource]="alertRows()!" aria-label="Historique des alertes du compteur">
+                  <ng-container matColumnDef="severity">
+                    <th mat-header-cell *matHeaderCellDef>Sévérité</th>
+                    <td mat-cell *matCellDef="let a"><app-severity [severity]="a.severity" /></td>
+                  </ng-container>
+                  <ng-container matColumnDef="rule">
+                    <th mat-header-cell *matHeaderCellDef>Règle</th>
+                    <td mat-cell *matCellDef="let a" class="rule">
+                      <span class="mono rule-code">{{ a.ruleCode }}</span> {{ ruleName(a) }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="message">
+                    <th mat-header-cell *matHeaderCellDef>Message</th>
+                    <td mat-cell *matCellDef="let a" class="message muted">{{ a.message }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="detectedAt">
+                    <th mat-header-cell *matHeaderCellDef>Détectée</th>
+                    <td mat-cell *matCellDef="let a" class="nowrap">{{ a.detectedAt | dateTime }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Statut</th>
+                    <td mat-cell *matCellDef="let a"><app-alert-status [status]="a.status" /></td>
+                  </ng-container>
+                  <ng-container matColumnDef="resolvedAt">
+                    <th mat-header-cell *matHeaderCellDef>Résolue</th>
+                    <td mat-cell *matCellDef="let a" class="nowrap muted">{{ a.resolvedAt ? (a.resolvedAt | dateTime) : '-' }}</td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="alertColumns"></tr>
+                  <tr mat-row *matRowDef="let a; columns: alertColumns"></tr>
+                </table>
+              </div>
+            } @else {
+              <app-empty-state icon="ph-check-circle" title="Aucune alerte" text="Aucune anomalie n’a été détectée sur ce compteur." />
+            }
+          }
+          @case ('error') {
+            <app-empty-state icon="ph-cloud-slash" title="Historique indisponible" />
+          }
+          @default {
+            <div class="padded"><app-skeleton height="120px" /></div>
+          }
+        }
+      </section>
+    }
+  }
+}

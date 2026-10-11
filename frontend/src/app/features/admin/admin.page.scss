@@ -1,0 +1,137 @@
+mat-tab-group {
+  ::ng-deep .mat-mdc-tab-body-wrapper {
+    padding-top: 16px;
+  }
+}
+
+.tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--app-hairline);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+}
+
+th.mat-mdc-header-cell:first-child,
+td.mat-mdc-cell:first-child {
+  padding-left: 20px;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.you {
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.actions {
+  width: 110px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 20px;
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  transition: opacity 150ms var(--ease-out);
+
+  &.disabled .rule-info,
+  &.disabled .rule-settings {
+    opacity: 0.55;
+  }
+}
+
+.rule-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  h3 {
+    font: var(--mat-sys-title-small);
+    font-weight: 600;
+  }
+}
+
+.code {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-badge);
+  background: color-mix(in srgb, var(--mat-sys-primary) 11%, transparent);
+  color: var(--mat-sys-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rule-info p {
+  margin-top: 6px;
+  max-width: 60ch;
+  font-size: 13px;
+}
+
+.rule-settings {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  mat-form-field {
+    width: 236px;
+  }
+}
+
+.no-setting {
+  font-size: 13px;
+}
+
+.rule-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+
+  mat-slide-toggle {
+    min-width: 128px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .rule {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .rule-actions {
+    justify-content: space-between;
+  }
+}

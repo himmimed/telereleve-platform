@@ -1,0 +1,86 @@
+<section class="form-side">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><mat-icon fontSet="ph" fontIcon="ph-broadcast" /></span>
+    <span>
+      <strong>Télérelève</strong>
+      <small>CEAC Maroc</small>
+    </span>
+  </div>
+
+  <div class="form-wrap">
+    <h1>Connexion</h1>
+    <p class="muted lead">Accédez à la supervision des compteurs d’électricité et d’eau.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Identifiant</mat-label>
+        <input matInput formControlName="username" autocomplete="username" autocapitalize="off" spellcheck="false" />
+        @if (form.controls.username.touched && form.controls.username.hasError('required')) {
+          <mat-error>Saisissez votre identifiant.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Mot de passe</mat-label>
+        <input
+          matInput
+          formControlName="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          autocomplete="current-password"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="showPassword.set(!showPassword())"
+          [attr.aria-label]="showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+        >
+          <mat-icon fontSet="ph" [fontIcon]="showPassword() ? 'ph-eye-slash' : 'ph-eye'" />
+        </button>
+        @if (form.controls.password.touched && form.controls.password.hasError('required')) {
+          <mat-error>Saisissez votre mot de passe.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (error()) {
+        <p class="error" role="alert">
+          <mat-icon fontSet="ph" fontIcon="ph-warning-circle" aria-hidden="true" />
+          {{ error() }}
+        </p>
+      }
+
+      <button mat-flat-button type="submit" class="submit" [disabled]="submitting()">
+        @if (submitting()) {
+          <mat-spinner diameter="18" aria-label="Connexion en cours" />
+        } @else {
+          Se connecter
+        }
+      </button>
+    </form>
+
+    @if (demoAccounts.length) {
+      <div class="demo">
+        <p class="demo-title">Comptes de démonstration</p>
+        <p class="muted demo-text">Données simulées. Cliquez sur un rôle pour remplir le formulaire.</p>
+        <div class="demo-list">
+          @for (account of demoAccounts; track account.username) {
+            <button type="button" class="demo-account" (click)="fill(account.username, account.password)">
+              <strong>{{ account.roleLabel }}</strong>
+              <span class="mono">{{ account.username }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <p class="footer muted">CEAC Maroc, Fès. Projet de stage, données entièrement simulées.</p>
+</section>
+
+<section class="visual-side" aria-hidden="true">
+  <div #map class="map"></div>
+  <div class="visual-copy">
+    <h2>Relève à distance des compteurs du réseau de Fès</h2>
+    <p>Collecte automatique des index, détection des anomalies et suivi des interventions.</p>
+  </div>
+</section>

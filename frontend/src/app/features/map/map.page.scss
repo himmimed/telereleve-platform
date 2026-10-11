@@ -1,0 +1,111 @@
+:host {
+  display: block;
+}
+
+.count {
+  margin-left: 6px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+// Legend keys inside the filter, drawn exactly like the markers.
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 7px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.key-OK {
+  background: var(--status-ok);
+}
+
+.key-ALERT {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
+  background: var(--status-alert);
+}
+
+.key-SILENT {
+  border: 2.5px solid var(--status-silent);
+}
+
+.map-panel {
+  position: relative;
+  height: max(480px, calc(100dvh - 190px));
+  overflow: hidden;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-panel) 70%, transparent);
+  pointer-events: none;
+}
+
+.meter-card {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 600;
+  width: min(320px, calc(100% - 32px));
+  padding: 14px 14px 16px 16px;
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--app-panel-raised);
+  box-shadow: 0 12px 32px var(--app-shadow);
+  animation: card-in 220ms var(--ease-out) both;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -6px -6px 0 0;
+}
+
+.serial {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.client {
+  margin-top: 2px;
+  color: var(--app-muted);
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0 14px;
+}
+
+.card-action {
+  width: 100%;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 767px) {
+  mat-button-toggle-group {
+    width: 100%;
+    overflow-x: auto;
+  }
+}

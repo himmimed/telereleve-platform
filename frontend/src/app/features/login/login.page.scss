@@ -1,0 +1,244 @@
+:host {
+  display: grid;
+  grid-template-columns: minmax(420px, 5fr) 7fr;
+  min-height: 100dvh;
+  background: var(--app-panel);
+}
+
+.form-side {
+  display: flex;
+  flex-direction: column;
+  padding: 32px 48px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.15;
+
+  strong {
+    display: block;
+    font-weight: 650;
+  }
+
+  small {
+    color: var(--app-muted);
+    font-size: 12px;
+  }
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-control);
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+.form-wrap {
+  width: 100%;
+  max-width: 380px;
+  margin: auto 0;
+  padding: 40px 0;
+  animation: rise 500ms var(--ease-out) both;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+  font-weight: 600;
+}
+
+.lead {
+  margin: 8px 0 28px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--sev-critical) 10%, transparent);
+  color: color-mix(in srgb, var(--sev-critical) 85%, var(--mat-sys-on-surface));
+  font: var(--mat-sys-body-small);
+  font-size: 13px;
+
+  mat-icon.mat-icon {
+    flex: none;
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 17px;
+  }
+}
+
+.submit {
+  height: 44px;
+  margin-top: 4px;
+
+  mat-spinner {
+    margin: 0 auto;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+.demo {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--app-hairline);
+}
+
+.demo-title {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.demo-text {
+  margin: 2px 0 12px;
+  font-size: 13px;
+}
+
+.demo-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.demo-account {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out);
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  span {
+    color: var(--app-muted);
+    font-size: 12px;
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--mat-sys-primary) 50%, transparent);
+    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.footer {
+  font-size: 12.5px;
+}
+
+.visual-side {
+  position: relative;
+  overflow: hidden;
+  margin: 12px 12px 12px 0;
+  border-radius: var(--radius-surface);
+  background: var(--app-bg);
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+// Keeps the headline readable over the map tiles.
+.visual-side::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--app-panel) 94%, transparent) 0%,
+    color-mix(in srgb, var(--app-panel) 55%, transparent) 38%,
+    transparent 70%
+  );
+}
+
+.visual-copy {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  z-index: 500;
+  max-width: 560px;
+
+  h2 {
+    font: var(--mat-sys-headline-large);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
+  }
+
+  p {
+    margin-top: 12px;
+    color: var(--app-muted);
+    font: var(--mat-sys-body-large);
+    max-width: 48ch;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (max-width: 960px) {
+  :host {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-side {
+    display: none;
+  }
+
+  .form-side {
+    padding: 24px 16px;
+  }
+
+  .form-wrap {
+    margin: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .demo-list {
+    grid-template-columns: 1fr;
+  }
+}

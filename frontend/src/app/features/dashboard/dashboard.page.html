@@ -1,0 +1,188 @@
+<app-page-header title="Tableau de bord" [subtitle]="updatedLabel()">
+  <button mat-stroked-button type="button" (click)="refresh()">
+    <mat-icon fontSet="ph" fontIcon="ph-arrows-clockwise" />
+    Actualiser
+  </button>
+</app-page-header>
+
+@if (failed() && !data()) {
+  <div class="panel">
+    <app-empty-state
+      icon="ph-cloud-slash"
+      title="Impossible de charger le tableau de bord"
+      text="Le serveur n’a pas répondu. Les indicateurs seront rechargés automatiquement."
+    >
+      <button mat-stroked-button type="button" (click)="refresh()">Réessayer</button>
+    </app-empty-state>
+  </div>
+} @else {
+  <!-- Key figures -->
+  <section class="kpis panel" aria-label="Indicateurs clés">
+    <div class="kpi">
+      <span class="kpi-label">Compteurs actifs</span>
+      @if (data(); as d) {
+        <span class="kpi-value num">{{ d.stats.activeMeters | num: 0 }}</span>
+        <span class="kpi-sub muted">Relève toutes les 15 min</span>
+      } @else {
+        <app-skeleton height="34px" width="72px" />
+        <app-skeleton height="12px" width="140px" />
+      }
+    </div>
+
+    <div class="kpi">
+      <span class="kpi-label">Compteurs silencieux</span>
+      @if (data(); as d) {
+        <span class="kpi-value num" [class.tone-silent]="d.stats.silentMeters > 0">{{ d.stats.silentMeters | num: 0 }}</span>
+        <span class="kpi-sub muted">Sans relève depuis plus de 45 min</span>
+      } @else {
+        <app-skeleton height="34px" width="56px" />
+        <app-skeleton height="12px" width="170px" />
+      }
+    </div>
+
+    <div class="kpi">
+      <span class="kpi-label">Alertes ouvertes</span>
+      @if (data(); as d) {
+        <span class="kpi-value num">{{ openAlertTotal() | num: 0 }}</span>
+        <span class="severity-split">
+          <span class="sev sev-critical"><b class="num">{{ d.stats.openAlerts.CRITICAL }}</b> critiques</span>
+          <span class="sev sev-high"><b class="num">{{ d.stats.openAlerts.HIGH }}</b> hautes</span>
+          <span class="sev sev-medium"><b class="num">{{ d.stats.openAlerts.MEDIUM }}</b> moyennes</span>
+        </span>
+      } @else {
+        <app-skeleton height="34px" width="56px" />
+        <app-skeleton height="12px" width="190px" />
+      }
+    </div>
+
+    <div class="kpi">
+      <span class="kpi-label">Consommation du jour</span>
+      @if (data(); as d) {
+        <span class="kpi-value num">{{ d.stats.consumptionToday.electricityKwh | num: 0 }}<small>kWh</small></span>
+        <span class="kpi-sub muted"><span class="num">{{ d.stats.consumptionToday.waterM3 | num: 1 }}</span> m³ d’eau depuis minuit</span>
+      } @else {
+        <app-skeleton height="34px" width="120px" />
+        <app-skeleton height="12px" width="150px" />
+      }
+    </div>
+  </section>
+
+  <div class="grid">
+    <!-- Network consumption trend -->
+    <section class="panel trend" aria-labelledby="trend-title">
+      <header class="panel-head">
+        <div>
+          <h2 id="trend-title" class="panel-title">Consommation du réseau</h2>
+          @if (data()) {
+            <p class="muted panel-sub">
+              <span class="num">{{ chartTotal() | num: (energy() === 'ELECTRICITY' ? 0 : 1) }}</span>
+              {{ chartUnit() }} sur {{ period() === '24h' ? 'les dernières 24 h' : 'les 7 derniers jours' }}
+            </p>
+          }
+        </div>
+        <div class="toggles">
+          <mat-button-toggle-group
+            [value]="energy()"
+            (change)="energy.set($event.value)"
+            hideSingleSelectionIndicator
+            aria-label="Type d’énergie"
+          >
+            <mat-button-toggle value="ELECTRICITY">Électricité</mat-button-toggle>
+            <mat-button-toggle value="WATER">Eau</mat-button-toggle>
+          </mat-button-toggle-group>
+          <mat-button-toggle-group
+            [value]="period()"
+            (change)="period.set($event.value)"
+            hideSingleSelectionIndicator
+            aria-label="Période"
+          >
+            <mat-button-toggle value="24h">24 h</mat-button-toggle>
+            <mat-button-toggle value="7d">7 jours</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </header>
+      @if (data()) {
+        <app-consumption-chart
+          [points]="chartPoints()"
+          [unit]="chartUnit()"
+          [kind]="period() === '24h' ? 'line' : 'bar'"
+          [decimals]="energy() === 'ELECTRICITY' ? 1 : 2"
+          [ariaLabel]="'Consommation ' + (energy() === 'ELECTRICITY' ? 'électrique' : 'd’eau') + ' du réseau, ' + (period() === '24h' ? 'par heure' : 'par jour')"
+        />
+      } @else {
+        <app-skeleton height="280px" />
+      }
+    </section>
+
+    <!-- Open alerts -->
+    <section class="panel alerts" aria-labelledby="alerts-title">
+      <header class="panel-head">
+        <h2 id="alerts-title" class="panel-title">
+          {{ auth.role() === 'TECHNICIAN' ? 'Mes alertes ouvertes' : 'Alertes à traiter' }}
+        </h2>
+        <a mat-button routerLink="/alertes">Tout voir</a>
+      </header>
+
+      @if (data(); as d) {
+        @if (d.alerts.length) {
+          <ul class="alert-list">
+            @for (alert of d.alerts; track alert.id) {
+              <li>
+                <a class="alert-row" routerLink="/alertes" [queryParams]="{ regle: alert.ruleCode }">
+                  <app-severity [severity]="alert.severity" />
+                  <span class="alert-main">
+                    <span class="alert-rule">{{ ruleLabel[alert.ruleCode] }}</span>
+                    <span class="alert-meter muted">
+                      <app-meter-type [type]="alert.meterType" [compact]="true" />
+                      <span class="mono">{{ alert.meterSerial }}</span>
+                    </span>
+                  </span>
+                  <span class="alert-time muted">{{ alert.detectedAt | relative }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-empty-state icon="ph-check-circle" title="Aucune alerte ouverte" text="Tous les compteurs fonctionnent normalement." />
+        }
+      } @else {
+        <div class="alert-skeletons">
+          @for (i of [1, 2, 3, 4, 5]; track i) {
+            <app-skeleton height="44px" />
+          }
+        </div>
+      }
+    </section>
+  </div>
+
+  <!-- Fleet status -->
+  <section class="panel fleet" aria-labelledby="fleet-title">
+    <div class="fleet-head">
+      <h2 id="fleet-title" class="panel-title">État du parc</h2>
+      <a mat-button routerLink="/carte">
+        Ouvrir la carte
+        <mat-icon fontSet="ph" fontIcon="ph-arrow-right" iconPositionEnd />
+      </a>
+    </div>
+    @if (data()) {
+      <div class="fleet-bar" role="img" [attr.aria-label]="'Répartition des compteurs actifs : ' + fleet()[0].count + ' normaux, ' + fleet()[1].count + ' en alerte, ' + fleet()[2].count + ' silencieux'">
+        @for (segment of fleet(); track segment.status) {
+          @if (segment.count > 0) {
+            <span class="segment" [class]="'segment s-' + segment.status" [style.flex-grow]="segment.share"></span>
+          }
+        }
+      </div>
+      <ul class="fleet-legend">
+        @for (segment of fleet(); track segment.status) {
+          <li>
+            <span class="swatch" [class]="'swatch s-' + segment.status" aria-hidden="true"></span>
+            <span>{{ fleetLabels[segment.status] }}</span>
+            <strong class="num">{{ segment.count }}</strong>
+          </li>
+        }
+      </ul>
+    } @else {
+      <app-skeleton height="10px" />
+    }
+  </section>
+}

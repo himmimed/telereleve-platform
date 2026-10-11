@@ -1,0 +1,118 @@
+<app-page-header title="Compteurs" [subtitle]="subtitle()">
+  @if (auth.role() === 'ADMIN') {
+    <button mat-flat-button type="button" (click)="create()">
+      <mat-icon fontSet="ph" fontIcon="ph-plus" />
+      Nouveau compteur
+    </button>
+  }
+</app-page-header>
+
+<section class="panel">
+  <div class="filters" role="search">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search">
+      <mat-label>Rechercher</mat-label>
+      <mat-icon matPrefix fontSet="ph" fontIcon="ph-magnifying-glass" />
+      <input
+        matInput
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+        placeholder="Numéro de série, client ou adresse"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Type</mat-label>
+      <mat-select [value]="type()" (selectionChange)="setType($event.value)">
+        <mat-option [value]="null">Tous les types</mat-option>
+        <mat-option value="ELECTRICITY">Électricité</mat-option>
+        <mat-option value="WATER">Eau</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Statut</mat-label>
+      <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
+        <mat-option [value]="null">Tous les statuts</mat-option>
+        <mat-option value="ACTIVE">Actif</mat-option>
+        <mat-option value="INACTIVE">Inactif</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    @if (hasFilters()) {
+      <button mat-button type="button" (click)="resetFilters()">Réinitialiser</button>
+    }
+  </div>
+
+  @if (state().status === 'error' && !page()) {
+    <app-empty-state icon="ph-cloud-slash" title="Impossible de charger les compteurs" text="Vérifiez la connexion puis réessayez." />
+  } @else if (!page()) {
+    <div class="skeleton-rows">
+      @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+        <app-skeleton height="20px" />
+      }
+    </div>
+  } @else if (page()!.content.length === 0) {
+    <app-empty-state
+      icon="ph-magnifying-glass"
+      title="Aucun compteur trouvé"
+      text="Aucun compteur ne correspond à ces critères. Modifiez la recherche ou les filtres."
+    >
+      <button mat-stroked-button type="button" (click)="resetFilters()">Réinitialiser les filtres</button>
+    </app-empty-state>
+  } @else {
+    <div class="table-wrap" [class.refreshing]="state().status === 'loading'">
+      <table mat-table [dataSource]="page()!.content" aria-label="Liste des compteurs">
+        <ng-container matColumnDef="serial">
+          <th mat-header-cell *matHeaderCellDef>Numéro de série</th>
+          <td mat-cell *matCellDef="let m"><span class="mono serial">{{ m.serial }}</span></td>
+        </ng-container>
+
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let m"><app-meter-type [type]="m.type" /></td>
+        </ng-container>
+
+        <ng-container matColumnDef="client">
+          <th mat-header-cell *matHeaderCellDef>Client</th>
+          <td mat-cell *matCellDef="let m" class="client">{{ m.clientName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="address">
+          <th mat-header-cell *matHeaderCellDef>Adresse</th>
+          <td mat-cell *matCellDef="let m" class="address muted">{{ m.address }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="lastReading">
+          <th mat-header-cell *matHeaderCellDef>Dernière relève</th>
+          <td mat-cell *matCellDef="let m" [title]="m.lastReadingAt | dateTime">{{ m.lastReadingAt | relative }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Statut</th>
+          <td mat-cell *matCellDef="let m">
+            <app-badge [label]="statusName(m)" [tone]="m.status === 'ACTIVE' ? 'ok' : 'neutral'" />
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let m; columns: columns"
+          class="row-link"
+          tabindex="0"
+          (click)="open(m)"
+          (keydown.enter)="open(m)"
+          [attr.aria-label]="'Ouvrir le compteur ' + m.serial"
+        ></tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [length]="page()!.totalElements"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

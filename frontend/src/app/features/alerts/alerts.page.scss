@@ -1,0 +1,120 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--app-hairline);
+
+  mat-form-field {
+    width: 200px;
+  }
+
+  .rule-filter {
+    width: 260px;
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+  transition: opacity 150ms var(--ease-out);
+
+  &.refreshing {
+    opacity: 0.55;
+  }
+}
+
+table {
+  width: 100%;
+  min-width: 1000px;
+}
+
+// Eight columns: tighter cell padding than the Material default keeps them on screen at 1280px+.
+th.mat-mdc-header-cell,
+td.mat-mdc-cell {
+  padding: 0 10px;
+}
+
+th.mat-mdc-header-cell:first-child,
+td.mat-mdc-cell:first-child {
+  padding-left: 20px;
+}
+
+tr.resolved td {
+  color: var(--app-muted);
+}
+
+.rule {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.rule-code {
+  margin-right: 6px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.meter {
+  white-space: nowrap;
+
+  app-meter-type {
+    margin-right: 6px;
+    vertical-align: -3px;
+  }
+
+  a {
+    color: inherit;
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--mat-sys-primary);
+      text-decoration: underline;
+    }
+  }
+}
+
+// Two lines at most; the full message is in the title attribute.
+.message {
+  min-width: 240px;
+  max-width: 380px;
+  padding-block: 10px;
+  line-height: 1.4;
+
+  span {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.actions {
+  width: 56px;
+  text-align: right;
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 20px;
+}
+
+mat-paginator {
+  border-top: 1px solid var(--app-hairline);
+}
+
+@media (max-width: 767px) {
+  .filters mat-form-field,
+  .filters .rule-filter {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}

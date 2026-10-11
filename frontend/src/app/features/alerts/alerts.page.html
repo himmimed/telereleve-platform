@@ -1,0 +1,169 @@
+<app-page-header title="Alertes" [subtitle]="subtitle()" />
+
+<section class="panel">
+  <div class="filters">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Statut</mat-label>
+      <mat-select [value]="status()" (selectionChange)="setFilter('status', $event.value)">
+        <mat-option [value]="null">Tous les statuts</mat-option>
+        @for (s of statuses; track s) {
+          <mat-option [value]="s">{{ statusLabel[s] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Sévérité</mat-label>
+      <mat-select [value]="severity()" (selectionChange)="setFilter('severity', $event.value)">
+        <mat-option [value]="null">Toutes les sévérités</mat-option>
+        @for (s of severities; track s) {
+          <mat-option [value]="s">{{ severityLabel[s] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="rule-filter">
+      <mat-label>Règle</mat-label>
+      <mat-select [value]="ruleCode()" (selectionChange)="setFilter('ruleCode', $event.value)">
+        <mat-option [value]="null">Toutes les règles</mat-option>
+        @for (code of ruleCodes; track code) {
+          <mat-option [value]="code">{{ code }}, {{ ruleLabel[code] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (hasFilters()) {
+      <button mat-button type="button" (click)="resetFilters()">Réinitialiser</button>
+    }
+  </div>
+
+  @if (failed() && !page()) {
+    <app-empty-state icon="ph-cloud-slash" title="Impossible de charger les alertes" text="Vérifiez la connexion puis réessayez." />
+  } @else if (!page()) {
+    <div class="skeleton-rows">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <app-skeleton height="22px" />
+      }
+    </div>
+  } @else if (page()!.content.length === 0) {
+    @if (hasFilters()) {
+      <app-empty-state icon="ph-funnel" title="Aucune alerte pour ces filtres" text="Modifiez ou réinitialisez les filtres.">
+        <button mat-stroked-button type="button" (click)="resetFilters()">Réinitialiser les filtres</button>
+      </app-empty-state>
+    } @else {
+      <app-empty-state
+        icon="ph-check-circle"
+        title="Aucune alerte"
+        [text]="isTechnician() ? 'Aucune alerte ne vous est assignée pour le moment.' : 'Aucune anomalie n’a été détectée.'"
+      />
+    }
+  } @else {
+    <div class="table-wrap" [class.refreshing]="loadingMore()">
+      <table mat-table [dataSource]="page()!.content" aria-label="Liste des alertes">
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>Sévérité</th>
+          <td mat-cell *matCellDef="let a"><app-severity [severity]="a.severity" /></td>
+        </ng-container>
+
+        <ng-container matColumnDef="rule">
+          <th mat-header-cell *matHeaderCellDef>Règle</th>
+          <td mat-cell *matCellDef="let a" class="rule">
+            <span class="mono rule-code">{{ a.ruleCode }}</span>{{ ruleName(a) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="meter">
+          <th mat-header-cell *matHeaderCellDef>Compteur</th>
+          <td mat-cell *matCellDef="let a" class="meter">
+            <app-meter-type [type]="a.meterType" [compact]="true" />
+            @if (canOpenMeter()) {
+              <a class="mono" [routerLink]="['/compteurs', a.meterId]">{{ a.meterSerial }}</a>
+            } @else {
+              <span class="mono">{{ a.meterSerial }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="message">
+          <th mat-header-cell *matHeaderCellDef>Message</th>
+          <td mat-cell *matCellDef="let a" class="message muted" [title]="a.message"><span>{{ a.message }}</span></td>
+        </ng-container>
+
+        <ng-container matColumnDef="detectedAt">
+          <th mat-header-cell *matHeaderCellDef>Détectée</th>
+          <td mat-cell *matCellDef="let a" class="nowrap" [title]="a.detectedAt | dateTime">{{ a.detectedAt | relative }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Statut</th>
+          <td mat-cell *matCellDef="let a"><app-alert-status [status]="a.status" /></td>
+        </ng-container>
+
+        <ng-container matColumnDef="assignee">
+          <th mat-header-cell *matHeaderCellDef>Assignée à</th>
+          <td mat-cell *matCellDef="let a" class="nowrap">
+            @if (a.assignedTo) {
+              {{ a.assignedTo.fullName }}
+            } @else {
+              <span class="muted">Non assignée</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+          <td mat-cell *matCellDef="let a" class="actions">
+            @if (transitions(a).length || isOperator()) {
+              <button
+                mat-icon-button
+                type="button"
+                [matMenuTriggerFor]="menu"
+                [disabled]="busyId() === a.id"
+                [attr.aria-label]="'Actions pour l’alerte ' + a.ruleCode + ' du compteur ' + a.meterSerial"
+              >
+                <mat-icon fontSet="ph" fontIcon="ph-dots-three-vertical" />
+              </button>
+              <mat-menu #menu="matMenu" xPosition="before">
+                @for (target of transitions(a); track target) {
+                  <button mat-menu-item type="button" (click)="changeStatus(a, target)">
+                    <mat-icon fontSet="ph" [fontIcon]="transitionIcon[target]" />
+                    <span>{{ transitionLabel[target] }}</span>
+                  </button>
+                }
+                @if (isOperator() && a.status !== 'RESOLVED') {
+                  <button mat-menu-item type="button" [matMenuTriggerFor]="assignMenu">
+                    <mat-icon fontSet="ph" fontIcon="ph-user-plus" />
+                    <span>Assigner à</span>
+                  </button>
+                }
+              </mat-menu>
+              <mat-menu #assignMenu="matMenu">
+                @for (tech of technicians(); track tech.id) {
+                  <button mat-menu-item type="button" (click)="assign(a, tech)" [disabled]="a.assignedTo?.id === tech.id">
+                    <span>{{ tech.fullName }}</span>
+                  </button>
+                }
+                @if (a.assignedTo) {
+                  <button mat-menu-item type="button" (click)="assign(a, null)">
+                    <span>Retirer l’assignation</span>
+                  </button>
+                }
+              </mat-menu>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let a; columns: columns" [class.resolved]="a.status === 'RESOLVED'"></tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [length]="page()!.totalElements"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPage($event)"
+    />
+  }
+</section>

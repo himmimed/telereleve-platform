@@ -1,0 +1,137 @@
+<app-page-header title="Administration" subtitle="Comptes des utilisateurs et paramètres de détection des anomalies" />
+
+<mat-tab-group animationDuration="150ms" mat-stretch-tabs="false" mat-align-tabs="start">
+  <!-- Users -->
+  <mat-tab label="Utilisateurs">
+    <section class="panel tab-panel">
+      <header class="tab-head">
+        <p class="muted">
+          @if (users(); as list) {
+            <span class="num">{{ list.length }}</span> {{ list.length > 1 ? 'comptes' : 'compte' }}
+          }
+        </p>
+        <button mat-flat-button type="button" (click)="openUser(null)">
+          <mat-icon fontSet="ph" fontIcon="ph-user-plus" />
+          Nouvel utilisateur
+        </button>
+      </header>
+
+      @if (usersFailed() && !users()) {
+        <app-empty-state icon="ph-cloud-slash" title="Impossible de charger les utilisateurs" />
+      } @else if (!users()) {
+        <div class="skeleton-rows">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <app-skeleton height="22px" />
+          }
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table mat-table [dataSource]="users()!" aria-label="Utilisateurs">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Nom</th>
+              <td mat-cell *matCellDef="let u" class="name">
+                {{ u.fullName }}
+                @if (isSelf(u)) {
+                  <span class="muted you">(vous)</span>
+                }
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="username">
+              <th mat-header-cell *matHeaderCellDef>Identifiant</th>
+              <td mat-cell *matCellDef="let u" class="mono">{{ u.username }}</td>
+            </ng-container>
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>E-mail</th>
+              <td mat-cell *matCellDef="let u" class="muted">{{ u.email }}</td>
+            </ng-container>
+            <ng-container matColumnDef="role">
+              <th mat-header-cell *matHeaderCellDef>Rôle</th>
+              <td mat-cell *matCellDef="let u">{{ roleName(u) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="enabled">
+              <th mat-header-cell *matHeaderCellDef>Statut</th>
+              <td mat-cell *matCellDef="let u">
+                <app-badge [label]="u.enabled ? 'Actif' : 'Désactivé'" [tone]="u.enabled ? 'ok' : 'neutral'" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+              <td mat-cell *matCellDef="let u" class="actions">
+                <button mat-icon-button type="button" (click)="openUser(u)" [attr.aria-label]="'Modifier ' + u.fullName" matTooltip="Modifier">
+                  <mat-icon fontSet="ph" fontIcon="ph-pencil-simple" />
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  (click)="deleteUser(u)"
+                  [disabled]="isSelf(u)"
+                  [attr.aria-label]="'Supprimer ' + u.fullName"
+                  [matTooltip]="isSelf(u) ? 'Vous ne pouvez pas supprimer votre propre compte' : 'Supprimer'"
+                >
+                  <mat-icon fontSet="ph" fontIcon="ph-trash" />
+                </button>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="userColumns"></tr>
+            <tr mat-row *matRowDef="let u; columns: userColumns"></tr>
+          </table>
+        </div>
+      }
+    </section>
+  </mat-tab>
+
+  <!-- Rules -->
+  <mat-tab label="Règles d’alerte">
+    <section class="rules">
+      @if (rules().status === 'error') {
+        <div class="panel"><app-empty-state icon="ph-cloud-slash" title="Impossible de charger les règles" /></div>
+      } @else if (!ruleRows()) {
+        @for (i of [1, 2, 3]; track i) {
+          <app-skeleton height="96px" />
+        }
+      } @else {
+        @for (row of ruleRows(); track row.rule.ruleCode) {
+          <form class="panel rule" [formGroup]="row.form" (ngSubmit)="saveRule(row.rule.ruleCode, row.form)" [class.disabled]="!row.form.controls.enabled.value">
+            <div class="rule-info">
+              <div class="rule-title">
+                <span class="mono code">{{ row.rule.ruleCode }}</span>
+                <h3>{{ ruleLabel[row.rule.ruleCode] }}</h3>
+                <app-severity [severity]="ruleSeverity[row.rule.ruleCode]" />
+              </div>
+              <p class="muted">{{ ruleDescription[row.rule.ruleCode] }}</p>
+            </div>
+
+            <div class="rule-settings">
+              @if (ruleFields[row.rule.ruleCode].threshold; as field) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ field.label }}</mat-label>
+                  <input matInput type="number" step="0.1" min="0" formControlName="threshold" class="num" />
+                  <span matTextSuffix>{{ field.suffix }}</span>
+                </mat-form-field>
+              }
+              @if (ruleFields[row.rule.ruleCode].window; as field) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ field.label }}</mat-label>
+                  <input matInput type="number" step="1" min="1" formControlName="windowHours" class="num" />
+                  <span matTextSuffix>h</span>
+                </mat-form-field>
+              }
+              @if (!ruleFields[row.rule.ruleCode].threshold && !ruleFields[row.rule.ruleCode].window) {
+                <p class="muted no-setting">Aucun seuil. Résolution manuelle obligatoire.</p>
+              }
+            </div>
+
+            <div class="rule-actions">
+              <mat-slide-toggle formControlName="enabled" [attr.aria-label]="'Activer la règle ' + row.rule.ruleCode">
+                {{ row.form.controls.enabled.value ? 'Activée' : 'Désactivée' }}
+              </mat-slide-toggle>
+              <button mat-stroked-button type="submit" [disabled]="row.form.pristine || savingRule() === row.rule.ruleCode">
+                Enregistrer
+              </button>
+            </div>
+          </form>
+        }
+      }
+    </section>
+  </mat-tab>
+</mat-tab-group>

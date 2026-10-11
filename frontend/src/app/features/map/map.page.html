@@ -1,0 +1,60 @@
+<app-page-header
+  title="Carte du parc"
+  [subtitle]="markers() ? counts().ALL + ' compteurs actifs autour de Fès' : 'Chargement des compteurs'"
+>
+  <mat-button-toggle-group
+    [value]="filter()"
+    (change)="filter.set($event.value); selected.set(null)"
+    hideSingleSelectionIndicator
+    aria-label="Filtrer par état"
+  >
+    <mat-button-toggle value="ALL">Tous <span class="count num">{{ counts().ALL }}</span></mat-button-toggle>
+    <mat-button-toggle value="OK">
+      <span class="key key-OK" aria-hidden="true"></span>Normal <span class="count num">{{ counts().OK }}</span>
+    </mat-button-toggle>
+    <mat-button-toggle value="ALERT">
+      <span class="key key-ALERT" aria-hidden="true"></span>En alerte <span class="count num">{{ counts().ALERT }}</span>
+    </mat-button-toggle>
+    <mat-button-toggle value="SILENT">
+      <span class="key key-SILENT" aria-hidden="true"></span>Silencieux <span class="count num">{{ counts().SILENT }}</span>
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+</app-page-header>
+
+<div class="map-panel panel">
+  <div #map class="map" role="region" aria-label="Carte des compteurs"></div>
+
+  @if (failed() && !markers()) {
+    <div class="overlay">
+      <app-empty-state icon="ph-cloud-slash" title="Carte indisponible" text="Les positions des compteurs n’ont pas pu être chargées." />
+    </div>
+  } @else if (markers() && visible().length === 0) {
+    <div class="overlay">
+      <app-empty-state icon="ph-map-pin" title="Aucun compteur dans cet état" text="Choisissez un autre filtre pour afficher des compteurs." />
+    </div>
+  }
+
+  @if (selected(); as meter) {
+    <aside class="meter-card" aria-live="polite">
+      <div class="card-head">
+        <span class="serial mono">{{ meter.serial }}</span>
+        <button mat-icon-button type="button" (click)="selected.set(null)" aria-label="Fermer">
+          <mat-icon fontSet="ph" fontIcon="ph-x" />
+        </button>
+      </div>
+      <p class="client">{{ meter.clientName }}</p>
+      <div class="card-meta">
+        <app-meter-type [type]="meter.type" />
+        <app-map-status [status]="meter.status" />
+      </div>
+      @if (canOpenDetails()) {
+        <a mat-flat-button [routerLink]="['/compteurs', meter.id]" class="card-action">
+          Voir le détail
+          <mat-icon fontSet="ph" fontIcon="ph-arrow-right" iconPositionEnd />
+        </a>
+      } @else if (meter.status !== 'OK') {
+        <a mat-stroked-button routerLink="/alertes" class="card-action">Voir mes alertes</a>
+      }
+    </aside>
+  }
+</div>
