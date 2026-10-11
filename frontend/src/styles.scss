@@ -1,0 +1,251 @@
+// Global theme of the Télérelève console.
+// Material 3 (Angular Material) is the single design system; everything below customises its tokens.
+// Shape rule (applies everywhere): controls (buttons, inputs, toggles, menus) 8px, surfaces (panels,
+// dialogs, map) 12px, badges 6px.
+@use '@angular/material' as mat;
+@use 'styles/theme-colors' as palette;
+
+html {
+  // `color-scheme` drives light-dark() in every token: the theme follows the OS unless the user
+  // forces a mode (ThemeService sets data-theme on <html>).
+  color-scheme: light dark;
+
+  @include mat.theme((
+    color: (
+      primary: palette.$primary-palette,
+      tertiary: palette.$tertiary-palette,
+      theme-type: color-scheme,
+    ),
+    typography: (
+      plain-family: ('Geist Variable', system-ui, sans-serif),
+      brand-family: ('Geist Variable', system-ui, sans-serif),
+      bold-weight: 600,
+      medium-weight: 500,
+      regular-weight: 400,
+    ),
+    density: -1,
+  ));
+
+  @include mat.button-overrides((
+    filled-container-shape: 8px,
+    outlined-container-shape: 8px,
+    text-container-shape: 8px,
+    protected-container-shape: 8px,
+    tonal-container-shape: 8px,
+  ));
+  @include mat.form-field-overrides((
+    outlined-container-shape: 8px,
+  ));
+  @include mat.button-toggle-overrides((
+    shape: 8px,
+    height: 34px,
+  ));
+  @include mat.menu-overrides((
+    container-shape: 8px,
+  ));
+  @include mat.dialog-overrides((
+    container-shape: 12px,
+  ));
+  @include mat.snack-bar-overrides((
+    container-shape: 8px,
+  ));
+  @include mat.table-overrides((
+    background-color: transparent,
+    header-headline-color: var(--app-muted),
+    row-item-outline-color: var(--app-hairline),
+    header-container-height: 40px,
+    row-item-container-height: 52px,
+  ));
+  @include mat.paginator-overrides((
+    container-background-color: transparent,
+  ));
+  @include mat.tabs-overrides((
+    divider-color: var(--app-hairline),
+  ));
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root {
+  --app-font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  // Surfaces: the page sits one step below the panels so panels read without heavy shadows.
+  --app-bg: light-dark(#f3f5f8, #0b1017);
+  --app-panel: light-dark(#ffffff, #121923);
+  --app-panel-raised: light-dark(#ffffff, #18212d);
+  --app-hairline: light-dark(#e2e6ed, #232d3a);
+  --app-muted: light-dark(#596270, #8e98a7);
+  --app-shadow: light-dark(rgb(15 40 60 / 0.08), rgb(0 0 0 / 0.45));
+
+  // Status palette, validated for colour-vision deficiency (docs/decisions.md, D11).
+  // Always paired with a text label or an icon, never colour alone.
+  --status-ok: light-dark(#166534, #239a5e);
+  --status-alert: light-dark(#d97706, #e39b26);
+  --status-silent: light-dark(#64748b, #94a3b8);
+  --sev-critical: light-dark(#b91c1c, #e5534b);
+  --sev-high: light-dark(#c2410c, #ec7a3c);
+  --sev-medium: light-dark(#a16207, #d6a72c);
+
+  --radius-control: 8px;
+  --radius-surface: 12px;
+  --radius-badge: 6px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+// Quantities (indexes, kWh, counts): tabular figures so digits align in columns. Geist is used
+// rather than the mono face because a monospaced comma reads as "5 ,9" in French decimals.
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+// Identifiers (serial numbers, usernames, rule codes): monospaced.
+.mono {
+  font-family: var(--app-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.panel {
+  background: var(--app-panel);
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--radius-surface);
+}
+
+.panel-title {
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// Phosphor icons rendered through <mat-icon fontSet="ph" fontIcon="ph-...">.
+.mat-icon.ph,
+.mat-icon.ph-fill {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// Clickable table rows
+tr.row-link {
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out);
+
+  &:hover {
+    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
+  }
+}
+
+// Leaflet: blend map controls and popups with the theme.
+.leaflet-container {
+  font: var(--mat-sys-body-small);
+  background: var(--app-bg);
+}
+
+// Muted basemap so status markers stand out; the dark variant inverts the OSM tiles.
+.map-tiles {
+  filter: saturate(0.3) brightness(1.04) contrast(0.92);
+}
+
+.map-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) saturate(0.25) brightness(0.82) contrast(0.95);
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: var(--app-panel);
+  color: var(--mat-sys-on-surface);
+  border-color: var(--app-hairline);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--app-panel-raised);
+  color: var(--mat-sys-on-surface);
+  box-shadow: 0 8px 24px var(--app-shadow);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-control);
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--app-panel) 85%, transparent) !important;
+  color: var(--app-muted);
+
+  a {
+    color: var(--app-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
