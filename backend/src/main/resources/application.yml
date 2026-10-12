@@ -21,6 +21,13 @@ spring:
           time_zone: UTC
   flyway:
     locations: classpath:db/migration
+  # SMTP server for alert e-mails: Mailpit in development (no authentication).
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_SMTP_PORT:1025}
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
 
 server:
   port: 8080
@@ -30,6 +37,11 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    mail:
+      # A mail server outage only delays notifications: it must not mark the backend as down
+      # (Docker would then consider it unhealthy). Failed mails are logged by AlertMailNotifier.
+      enabled: false
   endpoint:
     health:
       # Component names and status only (db: UP...), no connection details.
@@ -53,6 +65,16 @@ app:
     # Fixed id: the broker keeps this client's persistent session and queues readings while it is down.
     client-id: ${MQTT_CLIENT_ID:telereleve-backend}
     topic: ceac/meters/+/readings
+  anomaly:
+    # Rule A3 (silent meters) is checked periodically for every active meter.
+    schedule-interval: PT5M
+    schedule-initial-delay: PT1M
+  alerts:
+    mail:
+      enabled: ${ALERT_MAIL_ENABLED:true}
+      from: telereleve@ceac.test
+      to: ${ALERT_MAIL_TO:exploitation@ceac.test}
+      platform-url: ${PLATFORM_URL:http://localhost:4200}
   # Demo meter park, used only by DevDataSeeder (dev profile).
   seed:
     meter-count: ${APP_SEED_METER_COUNT:50}

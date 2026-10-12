@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +52,21 @@ public class ReadingRepository {
                 SELECT meter_id, read_at, index_value, voltage, signal_strength
                 FROM reading WHERE meter_id = ? AND read_at < ? ORDER BY read_at DESC LIMIT 1""",
                 ReadingRepository::map, meterId, Timestamp.from(before)).stream().findFirst();
+    }
+
+    /** Most recent reading at or before t: the index "as of" t. */
+    public Optional<StoredReading> findLatestAtOrBefore(UUID meterId, Instant t) {
+        return jdbc.query("""
+                SELECT meter_id, read_at, index_value, voltage, signal_strength
+                FROM reading WHERE meter_id = ? AND read_at <= ? ORDER BY read_at DESC LIMIT 1""",
+                ReadingRepository::map, meterId, Timestamp.from(t)).stream().findFirst();
+    }
+
+    /** Time of the meter's first reading: how much history exists (rules A1 and A2). */
+    public Optional<Instant> findFirstReadingAt(UUID meterId) {
+        return jdbc.query("SELECT min(read_at) AS first_at FROM reading WHERE meter_id = ?",
+                (rs, n) -> rs.getTimestamp("first_at"), meterId).stream()
+                .filter(Objects::nonNull).map(Timestamp::toInstant).findFirst();
     }
 
     public long countByMeter(UUID meterId) {

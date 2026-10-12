@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
+import ma.ceac.telereleve.alert.AlertService;
+import ma.ceac.telereleve.alert.dto.AlertResponse;
 import ma.ceac.telereleve.common.PageResponse;
 import ma.ceac.telereleve.meter.dto.MeterDetailsResponse;
 import ma.ceac.telereleve.meter.dto.MeterRequest;
@@ -34,10 +36,12 @@ public class MeterController {
 
     private final MeterService meterService;
     private final ReadingQueryService readingQueries;
+    private final AlertService alertService;
 
-    public MeterController(MeterService meterService, ReadingQueryService readingQueries) {
+    public MeterController(MeterService meterService, ReadingQueryService readingQueries, AlertService alertService) {
         this.meterService = meterService;
         this.readingQueries = readingQueries;
+        this.alertService = alertService;
     }
 
     @GetMapping
@@ -55,11 +59,12 @@ public class MeterController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get one meter with its last reading")
+    @Operation(summary = "Get one meter with its last reading and open alerts")
     public MeterDetailsResponse get(@PathVariable UUID id) {
         Meter meter = meterService.get(id);
         return new MeterDetailsResponse(MeterResponse.from(meter),
-                readingQueries.latest(id).map(ReadingResponse::from).orElse(null));
+                readingQueries.latest(id).map(ReadingResponse::from).orElse(null),
+                alertService.openAlerts(id).stream().map(AlertResponse::from).toList());
     }
 
     @PostMapping

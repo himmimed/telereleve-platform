@@ -33,14 +33,17 @@ public class ReadingIngestionService {
     private final ApplicationEventPublisher events;
     private final ObjectMapper json;
     private final Clock clock;
+    private final IngestionMonitor monitor;
 
     public ReadingIngestionService(MeterRepository meters, ReadingRepository readings,
-                                   ApplicationEventPublisher events, ObjectMapper json, Clock clock) {
+                                   ApplicationEventPublisher events, ObjectMapper json, Clock clock,
+                                   IngestionMonitor monitor) {
         this.meters = meters;
         this.readings = readings;
         this.events = events;
         this.json = json;
         this.clock = clock;
+        this.monitor = monitor;
     }
 
     @Transactional
@@ -64,6 +67,7 @@ public class ReadingIngestionService {
         }
         Meter meter = ((Accepted) verdict).meter();
 
+        monitor.processed(payload.timestamp());
         StoredReading reading = new StoredReading(meter.getId(), payload.timestamp(), payload.index(),
                 payload.voltage(), payload.signalStrength());
         if (!readings.insertIfAbsent(reading)) {

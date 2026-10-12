@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface MeterRepository extends JpaRepository<Meter, UUID>, JpaSpecificationExecutor<Meter> {
 
@@ -25,6 +26,7 @@ public interface MeterRepository extends JpaRepository<Meter, UUID>, JpaSpecific
      * Moves last_reading_at forward only: a late message (older timestamp, e.g. replayed after a network
      * outage) must not make the meter look silent. One SQL statement, so concurrent updates are safe.
      */
+    @Transactional
     @Modifying
     @Query(nativeQuery = true, value = """
             UPDATE meter SET last_reading_at = GREATEST(COALESCE(last_reading_at, :readAt), :readAt)

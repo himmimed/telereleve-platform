@@ -2,6 +2,7 @@ package ma.ceac.telereleve.config;
 
 import java.util.List;
 import java.util.Set;
+import ma.ceac.telereleve.anomaly.RuleConfigService;
 import ma.ceac.telereleve.meter.FesMeterGenerator;
 import ma.ceac.telereleve.meter.Meter;
 import ma.ceac.telereleve.meter.MeterRepository;
@@ -19,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Demo data, created only with the "dev" profile (never in production).
  * Idempotent: it adds the generated meters that are missing, so restarting is harmless and raising
  * app.seed.meter-count from 50 to 1000 simply adds meters 51 to 1000.
- * Users (phase 4) and rule settings (phase 3) are added here in their phases.
+ * Also inserts the default settings of rules A1 to A5. Users are added in phase 4.
  */
 @Component
 @Profile("dev")
@@ -29,10 +30,12 @@ public class DevDataSeeder implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DevDataSeeder.class);
 
     private final MeterRepository meters;
+    private final RuleConfigService ruleConfigs;
     private final SeedProperties properties;
 
-    public DevDataSeeder(MeterRepository meters, SeedProperties properties) {
+    public DevDataSeeder(MeterRepository meters, RuleConfigService ruleConfigs, SeedProperties properties) {
         this.meters = meters;
+        this.ruleConfigs = ruleConfigs;
         this.properties = properties;
     }
 
@@ -40,6 +43,8 @@ public class DevDataSeeder implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         seedMeters();
+        int rules = ruleConfigs.insertMissingDefaults();
+        log.info("Dev seed: {} default rule settings created", rules);
     }
 
     void seedMeters() {
