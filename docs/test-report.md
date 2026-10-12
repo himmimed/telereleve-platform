@@ -21,7 +21,7 @@ npx ng test --watch=false   # Vitest, 63 tests
 
 | Phase | Test class | Type | What it checks |
 |---|---|---|---|
-| 0 | `SchemaMigrationIT` | Integration (TimescaleDB) | Flyway V1 applies, `reading` is a hypertable, duplicate readings and negative indexes are rejected, one open alert per (meter, rule), health endpoint UP. **Not yet run: Docker unavailable on the development machine.** |
+| 0 | `SchemaMigrationIT` | Integration (TimescaleDB) | Flyway V1 applies, `reading` is a hypertable, duplicate readings and negative indexes are rejected, one open alert per (meter, rule), health endpoint UP. Passed (7/7) on 2026-10-12. |
 | 5 | `meter-rules.spec` | Frontend unit | Silent meter at 3 x interval (boundary), health priority, voltage range 207 / 253 V boundaries, signal quality |
 | 5 | `alert-rules.spec` | Frontend unit | Status changes allowed per role (operator, own technician alerts, admin read-only) |
 | 5 | `meter-form.dialog.spec` | Frontend unit | Serial format, serial prefix must match the energy type |

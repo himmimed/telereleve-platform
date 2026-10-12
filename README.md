@@ -6,8 +6,7 @@ anomalies (fault, fraud, abnormal consumption) and shows everything on a web das
 
 Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
 
-> Status: **Phase 0 (setup) written, backend integration tests pending; frontend built ahead of the
-> backend, on a simulated API.** See [Roadmap](#roadmap).
+> Status: **Phase 0 done; frontend built ahead of the backend, on a simulated API.** See [Roadmap](#roadmap).
 
 ## Tech stack
 
@@ -87,7 +86,7 @@ docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
 
 ## Roadmap
 
-- [ ] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI (integration tests not yet run)
+- [x] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI
 - [ ] Phase 1 - Meters and simulator
 - [ ] Phase 2 - MQTT ingestion and consumption
 - [ ] Phase 3 - Anomaly detection and alerts
