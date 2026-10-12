@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import ma.ceac.telereleve.common.ConflictException;
 import ma.ceac.telereleve.common.NotFoundException;
+import ma.ceac.telereleve.reading.ReadingQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -38,6 +39,9 @@ class MeterControllerTest {
 
     @MockitoBean
     private MeterService meterService;
+
+    @MockitoBean
+    private ReadingQueryService readingQueries;
 
     private static Meter meter() {
         return new Meter("CEAC-E-000123", MeterType.ELECTRICITY, "Foyer Alaoui", "1, Rue Ibn Sina, Fès",
