@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import ma.ceac.telereleve.TestcontainersConfiguration;
+import ma.ceac.telereleve.anomaly.RuleConfigService;
 import ma.ceac.telereleve.config.DevDataSeeder;
 import ma.ceac.telereleve.config.SeedProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,9 +34,12 @@ class MeterApiIT {
     @Autowired
     private MeterRepository meters;
 
+    @Autowired
+    private RuleConfigService ruleConfigs;
+
     @BeforeEach
     void cleanTables() {
-        jdbc.execute("TRUNCATE alert, reading, meter CASCADE");
+        jdbc.execute("TRUNCATE alert, reading, meter, alert_rule_config CASCADE");
     }
 
     private static Map<String, Object> body(String serial, String type, String client, String status) {
@@ -114,12 +118,13 @@ class MeterApiIT {
 
     @Test
     void devSeedCreatesTheParkOnceAndGrowsIt() {
-        new DevDataSeeder(meters, new SeedProperties(50, 0.3)).run(null);
-        new DevDataSeeder(meters, new SeedProperties(50, 0.3)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(50, 0.3)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(50, 0.3)).run(null);
         assertThat(meters.count()).isEqualTo(50);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM meter WHERE type = 'WATER'", Integer.class)).isEqualTo(15);
 
-        new DevDataSeeder(meters, new SeedProperties(120, 0.3)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(120, 0.3)).run(null);
         assertThat(meters.count()).isEqualTo(120);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM alert_rule_config", Integer.class)).isEqualTo(5);
     }
 }

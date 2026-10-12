@@ -1,0 +1,9 @@
+# Test overrides, loaded by Spring Boot on top of src/main/resources/application.yml.
+app:
+  anomaly:
+    # Tests run the silent-meter check themselves (AnomalyScheduler / AnomalyEngine).
+    scheduler-enabled: false
+  alerts:
+    mail:
+      # No SMTP server in tests; e-mail composition is unit-tested.
+      enabled: false

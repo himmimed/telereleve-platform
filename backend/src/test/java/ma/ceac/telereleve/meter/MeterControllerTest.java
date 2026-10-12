@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import java.util.UUID;
+import ma.ceac.telereleve.alert.AlertService;
 import ma.ceac.telereleve.common.ConflictException;
 import ma.ceac.telereleve.common.NotFoundException;
 import ma.ceac.telereleve.reading.ReadingQueryService;
@@ -42,6 +43,9 @@ class MeterControllerTest {
 
     @MockitoBean
     private ReadingQueryService readingQueries;
+
+    @MockitoBean
+    private AlertService alertService;
 
     private static Meter meter() {
         return new Meter("CEAC-E-000123", MeterType.ELECTRICITY, "Foyer Alaoui", "1, Rue Ibn Sina, Fès",

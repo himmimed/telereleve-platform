@@ -49,7 +49,7 @@ class MqttIngestionIT {
 
     @BeforeEach
     void setUp() throws Exception {
-        jdbc.execute("TRUNCATE alert, reading, meter CASCADE");
+        jdbc.execute("TRUNCATE alert, reading, meter, alert_rule_config CASCADE");
         meter = meters.save(new Meter("CEAC-E-000777", MeterType.ELECTRICITY, "Foyer Test", "Fès", 34, -5, 15, MeterStatus.ACTIVE));
         sentinel = meters.save(new Meter("CEAC-W-000778", MeterType.WATER, "Témoin", "Fès", 34, -5, 15, MeterStatus.ACTIVE));
         meters.save(new Meter("CEAC-E-000779", MeterType.ELECTRICITY, "Inactif", "Fès", 34, -5, 15, MeterStatus.INACTIVE));
@@ -86,8 +86,8 @@ class MqttIngestionIT {
 
     @Test
     void storesTenReadingsOnceEvenWhenRepublished() throws Exception {
-        // Ten readings one minute apart; the 6th has a lower index (possible fraud, rule A4 in phase 3):
-        // it is still a valid reading and must be stored.
+        // Ten readings one minute apart; the 6th has a lower index (possible fraud, rule A4):
+        // it is still a valid reading and must be stored, and it must open exactly one A4 alert.
         String[] indexes = {"100.10", "100.25", "100.41", "100.60", "100.72", "99.80", "100.95", "101.10", "101.30", "101.42"};
         for (int i = 0; i < indexes.length; i++) {
             publish(meter.getSerial(), electricity(meter.getSerial(), T0.plus(Duration.ofMinutes(i)), indexes[i]));
@@ -104,6 +104,9 @@ class MqttIngestionIT {
         assertThat(meters.findById(meter.getId()).orElseThrow().getLastReadingAt())
                 .isEqualTo(T0.plus(Duration.ofMinutes(9)));
         assertThat(readings.findLatest(meter.getId()).orElseThrow().index()).isEqualByComparingTo("101.42");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM alert WHERE meter_id = ? AND rule_code = 'A4' AND status IN ('NEW', 'IN_PROGRESS')",
+                Long.class, meter.getId())).isEqualTo(1);
     }
 
     @Test

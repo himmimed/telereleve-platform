@@ -49,7 +49,7 @@ class ReadingIngestionServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-10-12T10:16:00Z"), ZoneOffset.UTC);
         service = new ReadingIngestionService(meters, readings, events,
-                new ObjectMapper().registerModule(new JavaTimeModule()), clock);
+                new ObjectMapper().registerModule(new JavaTimeModule()), clock, new IngestionMonitor(clock));
     }
 
     @Test
