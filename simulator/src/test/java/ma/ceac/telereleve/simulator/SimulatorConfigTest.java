@@ -48,4 +48,21 @@ class SimulatorConfigTest {
     void neverPrintsThePassword() {
         assertThat(SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "s3cr3t")).toString()).doesNotContain("s3cr3t");
     }
+
+    @Test
+    void allowsAnomaliesInThePastOnlyWithinTheBackfilledHistory() {
+        SimulatorConfig demo = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x",
+                "SIM_BACKFILL_DAYS", "4", "SIM_ANOMALY_DELAY_MINUTES", "-1500"));
+        assertThat(demo.anomalyDelay()).isEqualTo(Duration.ofMinutes(-1500));
+
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x",
+                "SIM_BACKFILL_DAYS", "1", "SIM_ANOMALY_DELAY_MINUTES", "-1500")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void failsFastOnAnUnknownAnomalyType() {
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_ANOMALIES", "CEAC-E-000001:FIRE")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
