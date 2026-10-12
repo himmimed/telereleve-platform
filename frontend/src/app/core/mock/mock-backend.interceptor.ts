@@ -169,12 +169,16 @@ const routes: [string, RegExp, Role[] | null, Handler][] = [
     if (!meter) {
       return problem(404, 'Introuvable', 'Ce compteur n’existe pas.');
     }
+    // Same format as the backend: ';' separator, decimal comma, Moroccan time (UTC+1), UTF-8 BOM.
     const now = Date.now();
-    const readings = db.readings(meter, time(req, 'from', now - DAY), time(req, 'to', now), now);
+    const readings = db.readings(meter, time(req, 'from', now - 30 * DAY), time(req, 'to', now), now);
+    const decimal = (value: number, digits: number) => String(Number(value.toFixed(digits))).replace('.', ',');
+    const localTime = (iso: string) =>
+      new Date(Date.parse(iso) + 3_600_000).toISOString().replace(/\.\d{3}Z$/, '+01:00');
     const lines = readings.map((r) =>
-      [r.timestamp, r.index.toFixed(3), r.voltage?.toFixed(1) ?? '', r.signalStrength].join(';'),
+      [localTime(r.timestamp), decimal(r.index, 3), r.voltage === null ? '' : decimal(r.voltage, 1), r.signalStrength].join(';'),
     );
-    const csv = ['timestamp;index;voltage;signal_strength', ...lines].join('\n');
+    const csv = ['﻿horodatage;index;tension_v;signal_dbm', ...lines].join('\r\n');
     return ok(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   }],
 
