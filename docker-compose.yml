@@ -62,6 +62,9 @@ services:
       mailpit:
         condition: service_started
     environment:
+      # dev profile: demo data (meters around Fès). Never use it in production.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      APP_SEED_METER_COUNT: ${APP_SEED_METER_COUNT:-50}
       POSTGRES_HOST: timescaledb
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-telereleve}
@@ -75,6 +78,22 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 10
+
+  simulator:
+    build: ./simulator
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    environment:
+      MQTT_URL: tcp://mosquitto:1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-telereleve}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in .env (see .env.example)}
+      BACKEND_URL: http://backend:8080
+      SIM_INTERVAL_SECONDS: ${SIM_INTERVAL_SECONDS:-60}
+      SIM_MAX_METERS: ${SIM_MAX_METERS:-0}
 
 volumes:
   timescale-data:
