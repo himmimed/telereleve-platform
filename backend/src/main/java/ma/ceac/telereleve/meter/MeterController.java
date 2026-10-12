@@ -9,8 +9,11 @@ import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
 import ma.ceac.telereleve.common.PageResponse;
+import ma.ceac.telereleve.meter.dto.MeterDetailsResponse;
 import ma.ceac.telereleve.meter.dto.MeterRequest;
 import ma.ceac.telereleve.meter.dto.MeterResponse;
+import ma.ceac.telereleve.reading.ReadingQueryService;
+import ma.ceac.telereleve.reading.dto.ReadingResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -30,9 +33,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class MeterController {
 
     private final MeterService meterService;
+    private final ReadingQueryService readingQueries;
 
-    public MeterController(MeterService meterService) {
+    public MeterController(MeterService meterService, ReadingQueryService readingQueries) {
         this.meterService = meterService;
+        this.readingQueries = readingQueries;
     }
 
     @GetMapping
@@ -50,9 +55,11 @@ public class MeterController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get one meter")
-    public MeterResponse get(@PathVariable UUID id) {
-        return MeterResponse.from(meterService.get(id));
+    @Operation(summary = "Get one meter with its last reading")
+    public MeterDetailsResponse get(@PathVariable UUID id) {
+        Meter meter = meterService.get(id);
+        return new MeterDetailsResponse(MeterResponse.from(meter),
+                readingQueries.latest(id).map(ReadingResponse::from).orElse(null));
     }
 
     @PostMapping
