@@ -6,7 +6,8 @@ anomalies (fault, fraud, abnormal consumption) and shows everything on a web das
 
 Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
 
-> Status: **Phase 0 done; frontend built ahead of the backend, on a simulated API.** See [Roadmap](#roadmap).
+> Status: **Phases 0 and 1 done** (meter API, demo seed, simulator publishing over MQTT); frontend built
+> ahead of the backend, on a simulated API. See [Roadmap](#roadmap).
 
 ## Tech stack
 
@@ -32,10 +33,18 @@ docker compose up --build
 
 | Address | Service |
 |---|---|
+| <http://localhost:8080/swagger-ui.html> | API documentation (Swagger UI) |
 | <http://localhost:8080/actuator/health> | Backend health |
 | <http://localhost:8025> | Mailpit (e-mails sent by the platform) |
 | `localhost:1883` | MQTT broker (authenticated) |
 | `localhost:5432` | PostgreSQL / TimescaleDB |
+
+The `dev` profile seeds 50 meters around Fès (`APP_SEED_METER_COUNT` in `.env`), and the simulator
+publishes one reading per meter and per minute on `ceac/meters/{serial}/readings`. Watch them with:
+
+```sh
+docker compose exec mosquitto sh -c 'mosquitto_sub -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -t "ceac/meters/+/readings" -v'
+```
 
 Stop with `docker compose down` (add `-v` to delete the data volumes).
 
@@ -87,7 +96,7 @@ docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
 ## Roadmap
 
 - [x] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI
-- [ ] Phase 1 - Meters and simulator
+- [x] Phase 1 - Meters and simulator
 - [ ] Phase 2 - MQTT ingestion and consumption
 - [ ] Phase 3 - Anomaly detection and alerts
 - [ ] Phase 4 - Security (JWT, roles)

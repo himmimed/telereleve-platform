@@ -135,3 +135,33 @@ token in an HttpOnly cookie would remove this friction (to discuss in phase 4).
 The production initial bundle is about 855 kB raw / 186 kB compressed (Angular, Material core, the mock
 data). Charts (Chart.js) and the map (Leaflet) are lazy-loaded with their pages. The initial-bundle warning
 budget is set to 900 kB; the mock layer (about 25 kB) leaves the bundle when the real API is enabled.
+
+## D18 - Demo data seeded by a Java runner, not by Flyway
+
+**Decision.** `DevDataSeeder` (an `ApplicationRunner` active only with the `dev` profile) creates the meter
+park, using `FesMeterGenerator`. Users (phase 4, BCrypt hashes) and default rule settings (phase 3) will be
+added to it in their phases.
+**Why.** Flyway migrations should be identical in every environment; a dev-only migration would leave the
+database history inconsistent when the profile changes. The Java seeder is also configurable
+(`APP_SEED_METER_COUNT`: 50 for demos, 1000 for the load test) and idempotent: it only adds missing serials,
+and meter N is always the same meter, so growing the park from 50 to 1000 keeps the first 50 unchanged.
+
+## D19 - Simulator: meter list from the backend, stateless consumption model
+
+**Meter list.** The simulator fetches the active meters from `GET /api/meters` at startup (with retries
+while the backend starts). The backend stays the single source of truth for serials, as for real meters
+registered before installation. The "share of water meters" setting therefore lives in the seeder
+(`app.seed.water-share`, 30 %). Phase 4 will give the simulator a technical account for this call.
+**Index model.** The index is a pure function of (serial, time): base index plus everything consumed
+since 1 January 2025, with a daily profile (low at night, morning and evening peaks), +/-10 % noise per
+day and +/-15 % per hour. It never decreases, even across simulator restarts, so normal operation can
+never trigger rule A4 by mistake. The profile uses the fixed UTC+1 offset (Moroccan standard time) rather
+than the Africa/Casablanca zone, whose Ramadan clock change would repeat an hour.
+**Spreading.** Each meter publishes at its own offset within the interval, so 1000 meters do not hit the
+broker in the same second.
+
+## D20 - Shared web plumbing in a `common` package
+
+`PageResponse` (stable JSON for pages instead of serialising Spring's `PageImpl`), `NotFoundException`,
+`ConflictException` and `ApiExceptionHandler` (RFC 7807 errors with French `detail` and a field `errors`
+map) are used by every feature package, so they live in `common/` rather than in one feature.
