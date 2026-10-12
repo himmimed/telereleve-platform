@@ -36,3 +36,15 @@ management:
       show-components: always
       probes:
         enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  default-produces-media-type: application/json
+
+app:
+  # Demo meter park, used only by DevDataSeeder (dev profile).
+  seed:
+    meter-count: ${APP_SEED_METER_COUNT:50}
+    water-share: 0.3
