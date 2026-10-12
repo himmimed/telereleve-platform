@@ -19,11 +19,17 @@ cd ../frontend
 npx ng test --watch=false   # Vitest, 63 tests
 ```
 
-Latest run (2026-10-12): backend 54 unit + 22 integration tests, simulator 20, frontend 63, all passing.
+Latest run (2026-10-12): backend 115 unit + 28 integration tests, simulator 33, frontend 63, all passing.
+JaCoCo: `anomaly` package at 89 % line coverage; the build fails below 70 % (`check-anomaly-coverage`).
 End-to-end check: with `docker compose up`, all 50 seeded meters published a reading within the first
 minute, payloads match the contract, and indexes increase between two readings.
 Phase 2 (same stack): 102 readings from the 50 meters stored with no duplicate and no rejection; backend
 stopped for 90 s then restarted: the 76 readings published meanwhile were all delivered and stored.
+Phase 3 (clean stack, demo scenario: 4 days of history, one anomaly per rule started 25 h ago): exactly
+one alert per injected anomaly and none elsewhere (A1 W-000004, A2 E-000012 raised then auto-resolved,
+A3 E-000011, A4 E-000005, A5 E-000008); 2 e-mails received in Mailpit (A3 HIGH, A4 CRITICAL); the
+silent-meter check was postponed twice while the 19 400 history readings were processed. The first run of
+this test, before D26, had flagged all 50 meters as silent: that is how the problem was found.
 
 ## Current inventory
 
@@ -44,6 +50,16 @@ stopped for 90 s then restarted: the 76 readings published meanwhile were all de
 | 2 | `ReadingIngestionServiceTest` | Unit (Mockito) | Stores then updates the meter and publishes the event; duplicates and invalid JSON touch nothing else |
 | 2 | `MqttIngestionIT` | Integration (TimescaleDB + Mosquitto) | Specified scenario: 10 readings (one with a lower index) stored, re-published, still exactly 10 rows; 7 kinds of invalid messages dropped while ingestion continues; a late reading does not move `last_reading_at` back |
 | 2 | `ConsumptionApiIT` | Integration (TimescaleDB) | Hourly consumption with a gap and a decrease (3, 0, 5, 1), daily bucket on the Moroccan calendar, 400 on invalid step / period, French CSV export, JSON error for a too long export, last reading in meter details |
+| 3 | `ZeroConsumptionRuleTest` | Unit | A1: index frozen 24 h raises; any consumption, too little history or inactive meter does not; configured window |
+| 3 | `SpikeRuleTest` | Unit | A2: raises at 3.1x, not at 2.9x nor exactly 3x; skipped with 2 days of history, works with 3; skipped when that hour usually consumes 0; configured multiplier |
+| 3 | `SilentMeterRuleTest` | Unit | A3: scheduled; exactly 3 intervals tolerated, 1 s more raises (HIGH); duration wording; never-reporting meter measured from registration; configured multiple |
+| 3 | `DecreasingIndexRuleTest` | Unit | A4: decrease raises CRITICAL; equal or growing index, first reading, late reading compared with its real predecessor do not; never auto-resolved |
+| 3 | `VoltageOutOfRangeRuleTest` | Unit | A5: 207 and 253 V accepted, 206.9 and 253.1 V raise; water meters and missing voltage ignored; configured tolerance |
+| 3 | `AnomalyEngineTest`, `AnomalySchedulerTest` | Unit (Mockito) | Raise / auto-resolve / never resolve A4, disabled rule, trigger filtering, inactive meter, a failing rule does not stop the others; scheduler covers every active meter and waits during an ingestion backlog |
+| 3 | `RuleConfigServiceTest`, `AlertStatusTest`, `AlertMailNotifierTest`, `IngestionMonitorTest` | Unit | Default settings and validation; allowed status changes; mail only for HIGH / CRITICAL, French subject and body, mail failure logged not thrown; backlog detection |
+| 3 | `AlertLifecycleIT` | Integration (TimescaleDB) | One A4 alert for repeated decreases, never auto-resolved; A5 auto-resolved then reopened as a new alert; A3 raised by the schedule and cleared when the meter reports; disabled rule raises nothing; PATCH transitions (400 / 409), order and filters of GET /api/alerts, open alerts in meter details |
+| 3 | `MqttIngestionIT` (extended) | Integration (TimescaleDB + Mosquitto) | Specified scenario completed: 10 readings, re-published, still 10 rows **and exactly one open A4 alert** |
+| 3 | `MeterBehaviourTest`, `AnomalyPlanTest` | Simulator unit | Each injected anomaly produces its symptom (frozen index, 5x hour, one decrease, 258-262 V, no publication); explicit / percentage plans, deterministic, no voltage anomaly on water meters, typo detection |
 | 5 | `meter-rules.spec` | Frontend unit | Silent meter at 3 x interval (boundary), health priority, voltage range 207 / 253 V boundaries, signal quality |
 | 5 | `alert-rules.spec` | Frontend unit | Status changes allowed per role (operator, own technician alerts, admin read-only) |
 | 5 | `meter-form.dialog.spec` | Frontend unit | Serial format, serial prefix must match the energy type |

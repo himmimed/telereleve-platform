@@ -6,8 +6,8 @@ anomalies (fault, fraud, abnormal consumption) and shows everything on a web das
 
 Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
 
-> Status: **Phases 0 to 2 done** (meter API, demo seed, simulator, MQTT ingestion, consumption and CSV
-> export); frontend built ahead of the backend, on a simulated API. See [Roadmap](#roadmap).
+> Status: **Phases 0 to 3 done** (meters, simulator, MQTT ingestion, consumption, anomaly detection A1-A5,
+> alerts and e-mails); frontend built ahead of the backend, on a simulated API. See [Roadmap](#roadmap).
 
 ## Tech stack
 
@@ -45,6 +45,12 @@ publishes one reading per meter and per minute on `ceac/meters/{serial}/readings
 ```sh
 docker compose exec mosquitto sh -c 'mosquitto_sub -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -t "ceac/meters/+/readings" -v'
 ```
+
+**Demo scenario** (compose defaults, see `.env.example`): the simulator first publishes 4 days of history,
+then injects one anomaly per rule, started 25 hours ago, so every alert appears within minutes:
+`CEAC-W-000004` zero consumption (A1), `CEAC-E-000012` spike (A2, raised then resolved), `CEAC-E-000011`
+silent (A3), `CEAC-E-000005` decreasing index (A4), `CEAC-E-000008` voltage (A5). Alerts:
+<http://localhost:8080/api/alerts>; HIGH and CRITICAL e-mails: <http://localhost:8025>.
 
 The backend stores every reading (TimescaleDB hypertable `reading`). Try, with a meter id from
 `/api/meters`: `/api/meters/{id}`, `/api/meters/{id}/consumption?step=hour` and `/api/meters/{id}/export.csv`.
@@ -101,7 +107,7 @@ docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
 - [x] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI
 - [x] Phase 1 - Meters and simulator
 - [x] Phase 2 - MQTT ingestion and consumption
-- [ ] Phase 3 - Anomaly detection and alerts
+- [x] Phase 3 - Anomaly detection and alerts
 - [ ] Phase 4 - Security (JWT, roles)
 - [ ] Phase 5 - Angular frontend: all pages built on the simulated API; wiring to the real API remains
 - [ ] Phase 6 - Performance, documentation, finalisation

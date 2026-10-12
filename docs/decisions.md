@@ -209,3 +209,56 @@ Ranges are capped (hour: 31 days, day: 400 days, month: 10 years) to bound the r
 UTF-8 with a BOM so Excel detects the encoding, CRLF line endings (RFC 4180). The period is validated
 before any byte is written, so an invalid request still gets a JSON ProblemDetail. Rows are streamed from
 the database, never loaded in memory at once.
+
+## D25 - Anomaly engine: one rule per class, judged at the reading's time
+
+- **Strategy pattern.** `AnomalyRule` is the interface of the specification (`code()`, `evaluate()`),
+  plus two defaults: `trigger()` (on each reading, or on the 5-minute schedule for A3) and
+  `autoResolve()` (false for A4 only). Each rule is a Spring `@Component`; `AnomalyEngine` receives the
+  list and never names a rule, so adding a rule is adding one class.
+- **Rules read data through `ReadingHistory`**, an interface: the database version in production, an
+  in-memory version in unit tests, which makes the boundary tests (2.9x / 3.1x, 207 / 253 V, exactly 3
+  intervals) simple and fast.
+- **"Now" is the reading's timestamp** for rules run on a reading: replayed or back-filled readings are
+  judged at their own time, not at processing time.
+- **After commit, in order.** The engine runs once the reading is committed (`@TransactionalEventListener`):
+  detection failing never loses a reading. It runs on the ingestion thread, so a meter's readings are
+  judged in order (A4 compares with the previous one).
+- **One transaction per alert operation** (`REQUIRES_NEW` on raise / resolve): if the partial unique index
+  rejects a duplicate (two evaluations racing), only that operation is rolled back.
+- **Rule settings.** The specification seeds `alert_rule_config` in the dev profile only. So that
+  detection also works on a database where nobody configured the rules, a missing row falls back to the
+  specification defaults (`RuleSettings.DEFAULTS`); the dev seeder still inserts the rows.
+- **A2 details.** Compared with the same hour of the previous days (not the daily average, which would
+  flag every evening peak); skipped with fewer than 3 days of samples and when that hour's usual
+  consumption is 0 (the ratio is meaningless, e.g. water at night).
+- **Mail health indicator disabled.** A mail server outage only delays notifications; it must not mark
+  the backend unhealthy (Docker would stop dependent services). Failed mails are logged.
+
+## D26 - The silent-meter check waits while ingestion drains a backlog
+
+**Problem found in the end-to-end test.** At startup, the simulator publishes 4 days of history; after a
+backend restart, the broker replays the readings it queued. While that backlog is processed, every
+meter's `last_reading_at` is temporarily old, and the first A3 run flagged all 50 meters as silent
+(50 false HIGH alerts and 50 e-mails, auto-resolved 5 minutes later).
+**Decision.** `IngestionMonitor` remembers the delay of the last reading processed. If, within the last
+2 minutes, ingestion processed a reading more than 10 minutes old, it is catching up: the A3 run is
+postponed to the next one (5 minutes later) and logged.
+**Trade-off.** A meter that really went silent during a backlog is flagged a few minutes later. A
+whole-network outage is better reported as a platform problem than as 1000 A3 alerts.
+
+## D27 - Mosquitto queue sized for outages
+
+Mosquitto keeps at most 1000 queued messages per client by default and silently drops the rest. With
+1000 meters that is one minute of readings, so a backend restart could lose data despite the persistent
+session (D22). `max_queued_messages` is raised to 500 000 (more than 8 hours of readings for 1000 meters).
+
+## D28 - Anomaly injection and demo scenario in the simulator
+
+`SIM_ANOMALIES=SERIAL:TYPE,...` (ZERO, SPIKE, SILENT, DECREASING_INDEX, VOLTAGE) and / or
+`SIM_ANOMALY_PERCENT` (deterministic choice from the serial). Like the normal model, an anomalous meter
+is a pure function of (meter, anomaly, time). `SIM_BACKFILL_DAYS` publishes the past days at startup
+(every 15 minutes, oldest first, 400 readings per second), and a negative `SIM_ANOMALY_DELAY_MINUTES`
+starts the anomalies in that history. The compose defaults (4 days of history, one meter per anomaly,
+started 25 h ago) show every rule within minutes: A1 needs 24 h without consumption, A2 needs 3 days of
+history.
