@@ -73,6 +73,8 @@ services:
       MQTT_URL: tcp://mosquitto:1883
       MQTT_USERNAME: ${MQTT_USERNAME:-telereleve}
       MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in .env (see .env.example)}
+      MAIL_HOST: mailpit
+      MAIL_SMTP_PORT: 1025
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
@@ -97,6 +99,11 @@ services:
       BACKEND_URL: http://backend:8080
       SIM_INTERVAL_SECONDS: ${SIM_INTERVAL_SECONDS:-60}
       SIM_MAX_METERS: ${SIM_MAX_METERS:-0}
+      # Demo scenario: 4 days of history, and one meter per anomaly type, started 25 h ago.
+      SIM_BACKFILL_DAYS: ${SIM_BACKFILL_DAYS:-4}
+      SIM_ANOMALIES: ${SIM_ANOMALIES-CEAC-E-000005:DECREASING_INDEX,CEAC-E-000008:VOLTAGE,CEAC-E-000011:SILENT,CEAC-E-000012:SPIKE,CEAC-W-000004:ZERO}
+      SIM_ANOMALY_PERCENT: ${SIM_ANOMALY_PERCENT:-0}
+      SIM_ANOMALY_DELAY_MINUTES: ${SIM_ANOMALY_DELAY_MINUTES:--1500}
 
 volumes:
   timescale-data:
