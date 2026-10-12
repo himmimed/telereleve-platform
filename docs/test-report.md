@@ -19,9 +19,11 @@ cd ../frontend
 npx ng test --watch=false   # Vitest, 63 tests
 ```
 
-Latest run (2026-10-12): backend 30 unit + 13 integration tests, simulator 20, frontend 63, all passing.
+Latest run (2026-10-12): backend 54 unit + 22 integration tests, simulator 20, frontend 63, all passing.
 End-to-end check: with `docker compose up`, all 50 seeded meters published a reading within the first
 minute, payloads match the contract, and indexes increase between two readings.
+Phase 2 (same stack): 102 readings from the 50 meters stored with no duplicate and no rejection; backend
+stopped for 90 s then restarted: the 76 readings published meanwhile were all delivered and stored.
 
 ## Current inventory
 
@@ -36,6 +38,12 @@ minute, payloads match the contract, and indexes increase between two readings.
 | 1 | `ConsumptionModelTest` | Simulator unit | Index never decreases (3 days, minute by minute), deterministic, daily total within +/-11 % of the meter average, night < evening, voltage within 230 V +/- 2 %, RSSI range |
 | 1 | `ReadingPayloadTest` | Simulator unit | JSON fields exactly as the MQTT contract, no voltage for water, topic pattern |
 | 1 | `SimulatorConfigTest`, `MeterRegistryClientTest`, `MeterSimulatorTest` | Simulator unit | Env configuration and secret hiding, paginated meter fetch and HTTP errors, transmissions spread over the minute, QoS 1 |
+| 2 | `ReadingValidatorTest` | Unit | Accepts a valid / old / zero-index reading; +5 min boundary for future timestamps; rejects negative index, unknown or inactive meter, serial different from the topic, type mismatch, missing fields |
+| 2 | `ConsumptionCalculatorTest` | Unit | Difference of successive indexes, first index when no earlier reading, gaps (0 then catch-up), decreasing index never negative, one point per bucket |
+| 2 | `ConsumptionStepTest` | Unit | Hour / day / month alignment on UTC+1, calendar months, lower-case codes |
+| 2 | `ReadingIngestionServiceTest` | Unit (Mockito) | Stores then updates the meter and publishes the event; duplicates and invalid JSON touch nothing else |
+| 2 | `MqttIngestionIT` | Integration (TimescaleDB + Mosquitto) | Specified scenario: 10 readings (one with a lower index) stored, re-published, still exactly 10 rows; 7 kinds of invalid messages dropped while ingestion continues; a late reading does not move `last_reading_at` back |
+| 2 | `ConsumptionApiIT` | Integration (TimescaleDB) | Hourly consumption with a gap and a decrease (3, 0, 5, 1), daily bucket on the Moroccan calendar, 400 on invalid step / period, French CSV export, JSON error for a too long export, last reading in meter details |
 | 5 | `meter-rules.spec` | Frontend unit | Silent meter at 3 x interval (boundary), health priority, voltage range 207 / 253 V boundaries, signal quality |
 | 5 | `alert-rules.spec` | Frontend unit | Status changes allowed per role (operator, own technician alerts, admin read-only) |
 | 5 | `meter-form.dialog.spec` | Frontend unit | Serial format, serial prefix must match the energy type |

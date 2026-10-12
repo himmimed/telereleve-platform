@@ -165,3 +165,47 @@ broker in the same second.
 `PageResponse` (stable JSON for pages instead of serialising Spring's `PageImpl`), `NotFoundException`,
 `ConflictException` and `ApiExceptionHandler` (RFC 7807 errors with French `detail` and a field `errors`
 map) are used by every feature package, so they live in `common/` rather than in one feature.
+
+## D21 - Calendar of days and months: fixed UTC+1
+
+**Context.** Day and month buckets were first aligned with the `Africa/Casablanca` zone. The time-zone
+databases of Java and of the PostgreSQL image disagree on Morocco's offset (Ramadan clock changes), so
+TimescaleDB and Java computed day boundaries one hour apart and the daily consumption came out as 0.
+**Decision.** Days and months use Moroccan standard time as a fixed offset, `Etc/GMT-1` (UTC+1; POSIX
+names invert the sign), in Java and in `time_bucket`. The simulator's daily profile uses the same offset.
+**Why.** A fixed offset is identical in every time-zone database, and it never repeats or skips an hour.
+During Ramadan, a "day" bucket starts at 01:00 instead of midnight on the wall clock, which is acceptable
+for consumption statistics.
+
+## D22 - Ingestion guarantees: at-least-once delivery, exactly-once storage
+
+- **QoS 1 + persistent session.** The backend subscribes with a fixed client id and `cleanSession=false`:
+  while it is stopped, Mosquitto queues the readings and delivers them on reconnection. Verified with the
+  compose stack: backend stopped for 90 s, the 76 readings published meanwhile (all 50 meters) were stored.
+- **Manual acknowledgement.** A message is acknowledged once processed (stored, duplicate, or rejected on
+  purpose). On an infrastructure error (database down) it is left unacknowledged for redelivery.
+- **Idempotent storage.** `INSERT ... ON CONFLICT (meter_id, read_at) DO NOTHING` on the primary key (D2):
+  redeliveries and meter retries never create duplicates.
+- **Order.** Messages are processed one at a time, in arrival order, which keeps each meter's readings in
+  sequence for rule A4. At 1000 meters per minute that is about 17 messages per second, far below the
+  capacity of one thread (measured in phase 6).
+- **`last_reading_at` only moves forward** (`GREATEST` in a single UPDATE), so a late, older reading never
+  makes a meter look silent.
+- **Bad messages** (invalid JSON, unknown or inactive meter, serial different from the topic, type
+  mismatch, timestamp more than 5 minutes ahead, negative index, missing field) are logged once at WARN and
+  dropped. Old timestamps are accepted: a meter catching up after an outage sends readings from hours ago.
+
+## D23 - Consumption: per-bucket first / last index, computed in Java
+
+TimescaleDB returns, per `time_bucket`, the first and last index (`first()` / `last()`), so only a few rows
+leave the database even for a year of minute readings. `ConsumptionCalculator` (pure Java, unit-tested)
+then subtracts each bucket's last index from the previous known one: empty buckets give 0 and the next
+bucket with readings receives the consumption accumulated during the gap; a decreasing index counts as 0.
+Ranges are capped (hour: 31 days, day: 400 days, month: 10 years) to bound the response size.
+
+## D24 - CSV export for Excel in French
+
+`;` separator, decimal comma, timestamps in Moroccan time with their offset (`2026-10-12T11:15:00+01:00`),
+UTF-8 with a BOM so Excel detects the encoding, CRLF line endings (RFC 4180). The period is validated
+before any byte is written, so an invalid request still gets a JSON ProblemDetail. Rows are streamed from
+the database, never loaded in memory at once.
