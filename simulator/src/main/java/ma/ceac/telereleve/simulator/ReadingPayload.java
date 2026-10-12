@@ -28,13 +28,18 @@ public record ReadingPayload(
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public static ReadingPayload of(SimulatedMeter meter, Instant timestamp) {
+        return of(meter, null, timestamp);
+    }
+
+    /** Reading of a meter at a given time, altered by its injected anomaly (null if none). */
+    public static ReadingPayload of(SimulatedMeter meter, InjectedAnomaly anomaly, Instant timestamp) {
         return new ReadingPayload(
                 meter.serial(),
                 meter.type(),
                 timestamp,
-                ConsumptionModel.indexAt(meter, timestamp),
+                MeterBehaviour.indexAt(meter, anomaly, timestamp),
                 meter.type().unit(),
-                ConsumptionModel.voltageAt(meter, timestamp),
+                MeterBehaviour.voltageAt(meter, anomaly, timestamp),
                 ConsumptionModel.signalAt(meter, timestamp));
     }
 

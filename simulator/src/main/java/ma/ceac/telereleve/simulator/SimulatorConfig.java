@@ -6,10 +6,15 @@ import java.util.Map;
 /**
  * Configuration read from environment variables (see .env.example).
  *
- * @param mqttUrl          broker URL, e.g. tcp://mosquitto:1883
- * @param backendUrl       base URL of the backend, used to fetch the meter list
- * @param interval         time between two readings of the same meter (1 minute in demo mode)
- * @param maxMeters        simulate at most this many meters (0 = all active meters)
+ * @param mqttUrl        broker URL, e.g. tcp://mosquitto:1883
+ * @param backendUrl     base URL of the backend, used to fetch the meter list
+ * @param interval       time between two readings of the same meter (1 minute in demo mode)
+ * @param maxMeters      simulate at most this many meters (0 = all active meters)
+ * @param anomalies      explicit anomalies, "SERIAL:TYPE,..." (SIM_ANOMALIES)
+ * @param anomalyPercent share of the other meters given a random anomaly (SIM_ANOMALY_PERCENT, 0-100)
+ * @param anomalyDelay   anomalies start this long after the simulator (SIM_ANOMALY_DELAY_MINUTES);
+ *                       negative = in the past, within the backfilled history
+ * @param backfillDays   readings of the past N days published at startup, every 15 min (SIM_BACKFILL_DAYS)
  */
 public record SimulatorConfig(
         String mqttUrl,
@@ -18,7 +23,11 @@ public record SimulatorConfig(
         String backendUrl,
         Duration interval,
         int maxMeters,
-        String clientId) {
+        String clientId,
+        String anomalies,
+        int anomalyPercent,
+        Duration anomalyDelay,
+        int backfillDays) {
 
     public static SimulatorConfig fromEnvironment(Map<String, String> env) {
         String password = env.get("MQTT_PASSWORD");
@@ -33,6 +42,22 @@ public record SimulatorConfig(
         if (maxMeters < 0) {
             throw new IllegalArgumentException("SIM_MAX_METERS must be 0 (all) or positive");
         }
+        int percent = Integer.parseInt(env.getOrDefault("SIM_ANOMALY_PERCENT", "0"));
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException("SIM_ANOMALY_PERCENT must be between 0 and 100");
+        }
+        long delayMinutes = Long.parseLong(env.getOrDefault("SIM_ANOMALY_DELAY_MINUTES", "2"));
+        int backfillDays = Integer.parseInt(env.getOrDefault("SIM_BACKFILL_DAYS", "0"));
+        if (backfillDays < 0 || backfillDays > 31) {
+            throw new IllegalArgumentException("SIM_BACKFILL_DAYS must be between 0 and 31");
+        }
+        // A negative delay starts the anomalies in the past, inside the backfilled history, so every
+        // rule (A1 needs 24 h without consumption) can be demonstrated within minutes.
+        if (delayMinutes < -backfillDays * 1440L) {
+            throw new IllegalArgumentException("SIM_ANOMALY_DELAY_MINUTES cannot start the anomalies before the backfilled history");
+        }
+        String anomalies = env.getOrDefault("SIM_ANOMALIES", "");
+        AnomalyPlan.parse(anomalies); // fail fast on a typo
         return new SimulatorConfig(
                 env.getOrDefault("MQTT_URL", "tcp://localhost:1883"),
                 env.getOrDefault("MQTT_USERNAME", "telereleve"),
@@ -40,7 +65,11 @@ public record SimulatorConfig(
                 stripTrailingSlash(env.getOrDefault("BACKEND_URL", "http://localhost:8080")),
                 Duration.ofSeconds(intervalSeconds),
                 maxMeters,
-                env.getOrDefault("SIM_CLIENT_ID", "ceac-simulator"));
+                env.getOrDefault("SIM_CLIENT_ID", "ceac-simulator"),
+                anomalies,
+                percent,
+                Duration.ofMinutes(delayMinutes),
+                backfillDays);
     }
 
     private static String stripTrailingSlash(String url) {
@@ -50,7 +79,9 @@ public record SimulatorConfig(
     /** Never print the password. */
     @Override
     public String toString() {
-        return "SimulatorConfig[mqttUrl=%s, mqttUsername=%s, backendUrl=%s, interval=%s, maxMeters=%d, clientId=%s]"
-                .formatted(mqttUrl, mqttUsername, backendUrl, interval, maxMeters, clientId);
+        return ("SimulatorConfig[mqttUrl=%s, mqttUsername=%s, backendUrl=%s, interval=%s, maxMeters=%d, clientId=%s, "
+                + "anomalies=%s, anomalyPercent=%d, anomalyDelay=%s, backfillDays=%d]")
+                .formatted(mqttUrl, mqttUsername, backendUrl, interval, maxMeters, clientId,
+                        anomalies, anomalyPercent, anomalyDelay, backfillDays);
     }
 }
