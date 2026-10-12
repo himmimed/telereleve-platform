@@ -70,6 +70,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-telereleve}
       POSTGRES_USER: ${POSTGRES_USER:-telereleve}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+      MQTT_URL: tcp://mosquitto:1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-telereleve}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in .env (see .env.example)}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

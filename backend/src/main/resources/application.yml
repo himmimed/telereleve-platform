@@ -44,6 +44,15 @@ springdoc:
   default-produces-media-type: application/json
 
 app:
+  # MQTT ingestion of meter readings (see MqttConfig).
+  mqtt:
+    enabled: true
+    url: ${MQTT_URL:tcp://localhost:${MQTT_PORT:1883}}
+    username: ${MQTT_USERNAME:}
+    password: ${MQTT_PASSWORD:}
+    # Fixed id: the broker keeps this client's persistent session and queues readings while it is down.
+    client-id: ${MQTT_CLIENT_ID:telereleve-backend}
+    topic: ceac/meters/+/readings
   # Demo meter park, used only by DevDataSeeder (dev profile).
   seed:
     meter-count: ${APP_SEED_METER_COUNT:50}
