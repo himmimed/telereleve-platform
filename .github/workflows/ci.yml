@@ -63,7 +63,7 @@ jobs:
         run: ./mvnw -B verify
 
   compose:
-    name: Docker Compose config
+    name: Docker Compose (config + images)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -71,6 +71,9 @@ jobs:
         run: |
           cp .env.example .env
           docker compose config --quiet
+      # Builds the backend, simulator and frontend images exactly as `docker compose up --build` does.
+      - name: Build the images
+        run: docker compose build
 
   frontend:
     name: Frontend (tests + production build)
