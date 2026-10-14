@@ -127,8 +127,12 @@ export class AlertsPage {
     if (total === undefined) {
       return this.isTechnician() ? 'Alertes qui vous sont assignées' : 'Chargement';
     }
-    const noun = total > 1 ? 'alertes' : 'alerte';
-    return this.isTechnician() ? `${total} ${noun} qui vous sont assignées` : `${total} ${noun}`;
+    const plural = total > 1;
+    const noun = plural ? 'alertes' : 'alerte';
+    if (!this.isTechnician()) {
+      return `${total} ${noun}`;
+    }
+    return plural ? `${total} ${noun} qui vous sont assignées` : `${total} ${noun} qui vous est assignée`;
   });
 
   protected readonly transitionLabel: Record<AlertStatus, string> = {
