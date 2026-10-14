@@ -12,12 +12,15 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import ma.ceac.telereleve.common.BadRequestException;
 import ma.ceac.telereleve.meter.Meter;
 import ma.ceac.telereleve.meter.MeterService;
+import ma.ceac.telereleve.meter.MeterType;
 import ma.ceac.telereleve.reading.ConsumptionCalculator.Point;
 import ma.ceac.telereleve.reading.dto.ConsumptionResponse;
 import org.springframework.stereotype.Service;
@@ -71,6 +74,36 @@ public class ConsumptionService {
                 .map(p -> new Point(p.bucket(), p.value().setScale(3, RoundingMode.HALF_UP))).toList();
         BigDecimal total = rounded.stream().map(Point::value).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new ConsumptionResponse(meterId, meter.getType().unit(), step, total, rounded);
+    }
+
+    /** Consumption of all meters in one bucket, split by energy: kWh and m³ cannot be added. */
+    public record FleetPoint(Instant bucket, BigDecimal electricityKwh, BigDecimal waterM3) {
+    }
+
+    /**
+     * Consumption of the whole network per bucket, same rules and periods as one meter's consumption:
+     * the sum of every meter's consumption curve. Empty buckets are returned with 0.
+     */
+    public List<FleetPoint> fleetConsumption(Instant from, Instant to, ConsumptionStep step) {
+        Instant end = to != null ? to : clock.instant();
+        Instant start = from != null ? from : end.minus(step.defaultRange());
+        checkRange(start, end, step.maxRange());
+
+        Instant firstBucket = step.align(start, ZONE);
+        Map<Instant, BigDecimal[]> byBucket = new LinkedHashMap<>();
+        for (Instant b = firstBucket; b.isBefore(end); b = step.next(b, ZONE)) {
+            byBucket.put(b, new BigDecimal[] {BigDecimal.ZERO, BigDecimal.ZERO});
+        }
+        for (ReadingRepository.FleetBucket row : readings.fleetConsumption(firstBucket, end, step.sqlInterval(), ZONE)) {
+            BigDecimal[] values = byBucket.get(row.bucket());
+            if (values != null) {
+                values[row.type() == MeterType.ELECTRICITY ? 0 : 1] = row.value();
+            }
+        }
+        return byBucket.entrySet().stream()
+                .map(e -> new FleetPoint(e.getKey(), e.getValue()[0].setScale(3, RoundingMode.HALF_UP),
+                        e.getValue()[1].setScale(3, RoundingMode.HALF_UP)))
+                .toList();
     }
 
     /** A validated export period. */

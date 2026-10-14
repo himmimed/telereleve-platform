@@ -1,6 +1,7 @@
 package ma.ceac.telereleve.meter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -18,6 +19,8 @@ public interface MeterRepository extends JpaRepository<Meter, UUID>, JpaSpecific
     boolean existsBySerialAndIdNot(String serial, UUID id);
 
     Optional<Meter> findBySerial(String serial);
+
+    List<Meter> findByStatusOrderBySerial(MeterStatus status);
 
     @Query("select m.serial from Meter m")
     Set<String> findAllSerials();

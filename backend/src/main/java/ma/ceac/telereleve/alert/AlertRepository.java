@@ -2,6 +2,7 @@ package ma.ceac.telereleve.alert;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,4 +44,23 @@ public interface AlertRepository extends JpaRepository<Alert, UUID>, JpaSpecific
     @Modifying
     @Query("update Alert a set a.assignee = null where a.assignee.id = :userId")
     int unassignAll(UUID userId);
+
+    /** Meters with at least one open alert (map status). */
+    @Query("""
+            select distinct a.meter.id from Alert a
+            where a.status in (ma.ceac.telereleve.alert.AlertStatus.NEW, ma.ceac.telereleve.alert.AlertStatus.IN_PROGRESS)""")
+    Set<UUID> findMeterIdsWithOpenAlerts();
+
+    /** Number of open alerts per severity; a severity without open alert is absent. */
+    @Query("""
+            select a.severity as severity, count(a) as count from Alert a
+            where a.status in (ma.ceac.telereleve.alert.AlertStatus.NEW, ma.ceac.telereleve.alert.AlertStatus.IN_PROGRESS)
+            group by a.severity""")
+    List<SeverityCount> countOpenBySeverity();
+
+    interface SeverityCount {
+        Severity getSeverity();
+
+        long getCount();
+    }
 }

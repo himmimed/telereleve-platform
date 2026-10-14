@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import ma.ceac.telereleve.meter.MeterType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Repository;
@@ -89,6 +90,40 @@ public class ReadingRepository {
                 bucketWidth, zone.getId(), meterId, Timestamp.from(from), Timestamp.from(to));
     }
 
+    /**
+     * Consumption of all meters per bucket and energy type in [from, to), with the same rules as one
+     * meter's consumption (ConsumptionCalculator): each bucket's last index minus the previous reference
+     * (last index of the meter's previous non-empty bucket, else its last reading before `from`, else
+     * the bucket's first index), never negative. Empty buckets are absent.
+     */
+    public List<FleetBucket> fleetConsumption(Instant from, Instant to, String bucketWidth, ZoneId zone) {
+        return jdbc.query("""
+                WITH buckets AS (
+                    SELECT meter_id, time_bucket(?::interval, read_at, ?) AS bucket,
+                           first(index_value, read_at) AS first_index,
+                           last(index_value, read_at) AS last_index
+                    FROM reading
+                    WHERE read_at >= ? AND read_at < ?
+                    GROUP BY meter_id, bucket
+                ), consumed AS (
+                    SELECT b.meter_id, b.bucket,
+                           GREATEST(b.last_index - COALESCE(
+                               lag(b.last_index) OVER (PARTITION BY b.meter_id ORDER BY b.bucket),
+                               (SELECT r.index_value FROM reading r
+                                WHERE r.meter_id = b.meter_id AND r.read_at < ?
+                                ORDER BY r.read_at DESC LIMIT 1),
+                               b.first_index), 0) AS value
+                    FROM buckets b
+                )
+                SELECT c.bucket, m.type, sum(c.value) AS value
+                FROM consumed c JOIN meter m ON m.id = c.meter_id
+                GROUP BY c.bucket, m.type
+                ORDER BY c.bucket""",
+                (rs, n) -> new FleetBucket(rs.getTimestamp("bucket").toInstant(),
+                        MeterType.valueOf(rs.getString("type")), rs.getBigDecimal("value")),
+                bucketWidth, zone.getId(), Timestamp.from(from), Timestamp.from(to), Timestamp.from(from));
+    }
+
     /** Readings in [from, to), oldest first, streamed row by row (CSV export of long periods). */
     public void forEachReading(UUID meterId, Instant from, Instant to, RowCallbackHandler handler) {
         jdbc.query("""
@@ -107,5 +142,8 @@ public class ReadingRepository {
     }
 
     public record BucketIndexes(Instant bucket, BigDecimal firstIndex, BigDecimal lastIndex) {
+    }
+
+    public record FleetBucket(Instant bucket, MeterType type, BigDecimal value) {
     }
 }

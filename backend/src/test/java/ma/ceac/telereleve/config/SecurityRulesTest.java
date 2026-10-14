@@ -15,6 +15,8 @@ import ma.ceac.telereleve.alert.AlertController;
 import ma.ceac.telereleve.alert.AlertService;
 import ma.ceac.telereleve.anomaly.RuleConfigController;
 import ma.ceac.telereleve.anomaly.RuleConfigService;
+import ma.ceac.telereleve.dashboard.DashboardController;
+import ma.ceac.telereleve.dashboard.DashboardService;
 import ma.ceac.telereleve.meter.MeterController;
 import ma.ceac.telereleve.meter.MeterService;
 import ma.ceac.telereleve.reading.ConsumptionService;
@@ -48,7 +50,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * here, so an allowed call may fail later (500); what matters is that it is not 401 / 403.
  */
 @WebMvcTest(controllers = {MeterController.class, ReadingController.class, AlertController.class,
-        RuleConfigController.class, UserController.class, AuthController.class})
+        RuleConfigController.class, UserController.class, AuthController.class, DashboardController.class})
 @Import(SecurityConfig.class)
 class SecurityRulesTest {
 
@@ -68,6 +70,7 @@ class SecurityRulesTest {
     @MockitoBean private UserService userService;
     @MockitoBean private AuthService authService;
     @MockitoBean private AppUserRepository appUserRepository;
+    @MockitoBean private DashboardService dashboardService;
 
     private static UsernamePasswordAuthenticationToken as(Role role) {
         return new UsernamePasswordAuthenticationToken(
@@ -134,7 +137,10 @@ class SecurityRulesTest {
                 row(HttpMethod.GET, "/api/users", null, true, false, false),
                 row(HttpMethod.POST, "/api/users", "{}", true, false, false),
                 row(HttpMethod.DELETE, "/api/users/" + ID, null, true, false, false),
-                row(HttpMethod.GET, "/api/users/technicians", null, true, true, false));
+                row(HttpMethod.GET, "/api/users/technicians", null, true, true, false),
+                row(HttpMethod.GET, "/api/meters/map", null, true, true, true),
+                row(HttpMethod.GET, "/api/dashboard/stats", null, true, true, true),
+                row(HttpMethod.GET, "/api/dashboard/consumption-trend", null, true, true, true));
     }
 
     private static Arguments row(HttpMethod method, String url, String body, boolean admin, boolean operator, boolean technician) {

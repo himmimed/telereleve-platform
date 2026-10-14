@@ -17,6 +17,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class SilentMeterRule implements AnomalyRule {
 
+    /** Allowed silence, in reading intervals, when the rule has no setting. */
+    public static final String DEFAULT_MULTIPLE = "3";
+
+    /**
+     * True if no reading arrived for more than `multiple` reading intervals, counted from the last
+     * reading, or from the registration of a meter that never reported. Also used by the map.
+     */
+    public static boolean isSilent(Meter meter, Instant now, long multiple) {
+        Instant reference = reference(meter);
+        if (reference == null) {
+            return false;
+        }
+        Duration allowed = Duration.ofMinutes(multiple * meter.getReadingIntervalMin());
+        return Duration.between(reference, now).compareTo(allowed) > 0;
+    }
+
+    private static Instant reference(Meter meter) {
+        return meter.getLastReadingAt() != null ? meter.getLastReadingAt() : meter.getCreatedAt();
+    }
+
     @Override
     public String code() {
         return "A3";
@@ -32,16 +52,11 @@ public class SilentMeterRule implements AnomalyRule {
         if (meter.getStatus() != MeterStatus.ACTIVE) {
             return Optional.empty();
         }
-        Instant reference = meter.getLastReadingAt() != null ? meter.getLastReadingAt() : meter.getCreatedAt();
-        if (reference == null) {
+        long multiple = ctx.settings().thresholdOr(DEFAULT_MULTIPLE).longValue();
+        if (!isSilent(meter, ctx.now(), multiple)) {
             return Optional.empty();
         }
-        long multiple = ctx.settings().thresholdOr("3").longValue();
-        Duration allowed = Duration.ofMinutes(multiple * meter.getReadingIntervalMin());
-        Duration silentFor = Duration.between(reference, ctx.now());
-        if (silentFor.compareTo(allowed) <= 0) {
-            return Optional.empty();
-        }
+        Duration silentFor = Duration.between(reference(meter), ctx.now());
         String since = meter.getLastReadingAt() != null ? "Aucune relève depuis " : "Aucune relève reçue depuis l’installation, il y a ";
         return Optional.of(new AnomalyResult(Severity.HIGH, "%s%s (intervalle attendu : %d min)."
                 .formatted(since, Messages.duration(silentFor), meter.getReadingIntervalMin())));
