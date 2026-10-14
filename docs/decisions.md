@@ -262,3 +262,45 @@ is a pure function of (meter, anomaly, time). `SIM_BACKFILL_DAYS` publishes the 
 starts the anomalies in that history. The compose defaults (4 days of history, one meter per anomaly,
 started 25 h ago) show every rule within minutes: A1 needs 24 h without consumption, A2 needs 3 days of
 history.
+
+## D29 - JWT authentication
+
+- **Stateless HS256 tokens** (Spring Security resource server, Nimbus), signed with `JWT_SECRET` (base64,
+  at least 32 bytes, checked at startup), valid 8 hours, issuer `ceac-telereleve`. The token carries the
+  user id, role and name for the frontend; it is not trusted alone.
+- **The user is reloaded on every request** (by the `uid` claim). A disabled or deleted account is
+  refused at once and a role change applies immediately, without a token blacklist. Cost: one primary-key
+  lookup per request, negligible at this scale.
+- **Login** answers the same message for an unknown user and a wrong password, and spends the same BCrypt
+  time in both cases (dummy hash), so usernames cannot be guessed.
+- **Deny by default.** Every route is listed in `SecurityConfig`; anything else is refused. 401 and 403
+  are ProblemDetail JSON with French messages, like the other errors.
+- **Safeguards** in `UserService`: an admin cannot demote, disable or delete themself, and the last active
+  admin cannot be removed. Deleting a user, or a user no longer being an enabled technician, unassigns
+  their alerts.
+- **Simulator account.** The simulator only needs the list of active meters; it signs in as the technical
+  account `simulateur` (OPERATOR, password `SIMULATOR_PASSWORD`). Known limitation: OPERATOR is broader
+  than needed; a dedicated read-only role would be the production answer.
+- **No CORS configuration.** The Angular dev server and the production nginx proxy `/api` to the backend,
+  so the browser only talks to one origin.
+- **No production admin bootstrap.** Users are seeded by the dev profile only (`APP_SEED_DEMO_PASSWORD`).
+  A production deployment would create the first admin with a one-off migration or command.
+- **CSRF disabled**: no cookie is used, the token travels in the `Authorization` header.
+
+## D30 - Alert update: absent field vs null
+
+`PATCH /api/alerts/{id}` must tell "assignedTo not sent" (keep the assignee) from `"assignedTo": null`
+(unassign). Jackson builds a record's `Optional` component the same way in both cases, so
+`AlertUpdateRequest` is a small class whose `assignedTo` setter records that the field was present.
+A technician may only change the status of their own alerts, cannot reassign and cannot reopen;
+assignment is only possible to an enabled technician.
+
+## D31 - A2 ignores hours around a gap in the data
+
+**Problem found in the end-to-end test.** After the simulator had been stopped for about a day and was
+restarted, A2 raised a spike on almost every meter: the reading "at or before one hour ago" was the last
+one before the gap, so the whole gap's consumption was read as the last hour (up to 60 times the usual).
+**Decision.** A2 now measures an hourly rate between real readings, and only when there is a reading
+within two reading intervals of both ends of the hour (the last hour and each reference hour). An hour
+without data around it is not judged; a reference day without data is not counted as a sample. Missing
+data is A3's job, not A2's.

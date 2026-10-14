@@ -27,9 +27,23 @@ outside containers.
 
 ```sh
 cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-# edit .env and set your own passwords
+# edit .env: set your own passwords and a JWT signing key, for example
+#   openssl rand -base64 48            (or PowerShell: [Convert]::ToBase64String((1..48|%{Get-Random -Max 256})))
 docker compose up --build
 ```
+
+**Sign in.** Every API route except login, health and the API documentation needs a JWT. The `dev`
+profile creates these demo accounts, all with the password `APP_SEED_DEMO_PASSWORD` from `.env`:
+
+| Username | Name | Role |
+|---|---|---|
+| `admin` | Youssef El Amrani | ADMIN: meters, users, rule settings |
+| `operateur` | Salma Bennani | OPERATOR: supervision, alert handling and assignment |
+| `technicien`, `technicien2` | Hamza Tazi, Nadia Alaoui | TECHNICIAN: map and their own alerts |
+
+The simulator signs in with the technical account `simulateur` (`SIMULATOR_PASSWORD`). Get a token with
+`POST /api/auth/login` (`{"username":"admin","password":"..."}`) and send it as
+`Authorization: Bearer <token>`, or use the *Authorize* button of Swagger UI.
 
 | Address | Service |
 |---|---|
@@ -50,7 +64,7 @@ docker compose exec mosquitto sh -c 'mosquitto_sub -u "$MQTT_USERNAME" -P "$MQTT
 then injects one anomaly per rule, started 25 hours ago, so every alert appears within minutes:
 `CEAC-W-000004` zero consumption (A1), `CEAC-E-000012` spike (A2, raised then resolved), `CEAC-E-000011`
 silent (A3), `CEAC-E-000005` decreasing index (A4), `CEAC-E-000008` voltage (A5). Alerts:
-<http://localhost:8080/api/alerts>; HIGH and CRITICAL e-mails: <http://localhost:8025>.
+`GET /api/alerts` (signed in); HIGH and CRITICAL e-mails: <http://localhost:8025>.
 
 The backend stores every reading (TimescaleDB hypertable `reading`). Try, with a meter id from
 `/api/meters`: `/api/meters/{id}`, `/api/meters/{id}/consumption?step=hour` and `/api/meters/{id}/export.csv`.
@@ -108,6 +122,6 @@ docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
 - [x] Phase 1 - Meters and simulator
 - [x] Phase 2 - MQTT ingestion and consumption
 - [x] Phase 3 - Anomaly detection and alerts
-- [ ] Phase 4 - Security (JWT, roles)
+- [x] Phase 4 - Security (JWT, roles)
 - [ ] Phase 5 - Angular frontend: all pages built on the simulated API; wiring to the real API remains
 - [ ] Phase 6 - Performance, documentation, finalisation
