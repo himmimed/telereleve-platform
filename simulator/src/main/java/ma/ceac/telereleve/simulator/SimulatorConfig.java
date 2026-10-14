@@ -15,6 +15,8 @@ import java.util.Map;
  * @param anomalyDelay   anomalies start this long after the simulator (SIM_ANOMALY_DELAY_MINUTES);
  *                       negative = in the past, within the backfilled history
  * @param backfillDays   readings of the past N days published at startup, every 15 min (SIM_BACKFILL_DAYS)
+ * @param backendUsername technical account used to read the meter list (SIM_BACKEND_USERNAME)
+ * @param backendPassword its password (SIM_BACKEND_PASSWORD)
  */
 public record SimulatorConfig(
         String mqttUrl,
@@ -27,7 +29,9 @@ public record SimulatorConfig(
         String anomalies,
         int anomalyPercent,
         Duration anomalyDelay,
-        int backfillDays) {
+        int backfillDays,
+        String backendUsername,
+        String backendPassword) {
 
     public static SimulatorConfig fromEnvironment(Map<String, String> env) {
         String password = env.get("MQTT_PASSWORD");
@@ -56,6 +60,10 @@ public record SimulatorConfig(
         if (delayMinutes < -backfillDays * 1440L) {
             throw new IllegalArgumentException("SIM_ANOMALY_DELAY_MINUTES cannot start the anomalies before the backfilled history");
         }
+        String backendPassword = env.get("SIM_BACKEND_PASSWORD");
+        if (backendPassword == null || backendPassword.isBlank()) {
+            throw new IllegalArgumentException("SIM_BACKEND_PASSWORD must be set: the meter list requires authentication");
+        }
         String anomalies = env.getOrDefault("SIM_ANOMALIES", "");
         AnomalyPlan.parse(anomalies); // fail fast on a typo
         return new SimulatorConfig(
@@ -69,7 +77,9 @@ public record SimulatorConfig(
                 anomalies,
                 percent,
                 Duration.ofMinutes(delayMinutes),
-                backfillDays);
+                backfillDays,
+                env.getOrDefault("SIM_BACKEND_USERNAME", "simulateur"),
+                backendPassword);
     }
 
     private static String stripTrailingSlash(String url) {
@@ -80,8 +90,8 @@ public record SimulatorConfig(
     @Override
     public String toString() {
         return ("SimulatorConfig[mqttUrl=%s, mqttUsername=%s, backendUrl=%s, interval=%s, maxMeters=%d, clientId=%s, "
-                + "anomalies=%s, anomalyPercent=%d, anomalyDelay=%s, backfillDays=%d]")
+                + "anomalies=%s, anomalyPercent=%d, anomalyDelay=%s, backfillDays=%d, backendUsername=%s]")
                 .formatted(mqttUrl, mqttUsername, backendUrl, interval, maxMeters, clientId,
-                        anomalies, anomalyPercent, anomalyDelay, backfillDays);
+                        anomalies, anomalyPercent, anomalyDelay, backfillDays, backendUsername);
     }
 }

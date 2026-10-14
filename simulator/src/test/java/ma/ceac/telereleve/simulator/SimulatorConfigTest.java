@@ -11,7 +11,7 @@ class SimulatorConfigTest {
 
     @Test
     void usesDemoDefaults() {
-        SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "secret"));
+        SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "secret", "SIM_BACKEND_PASSWORD", "pw"));
 
         assertThat(config.mqttUrl()).isEqualTo("tcp://localhost:1883");
         assertThat(config.backendUrl()).isEqualTo("http://localhost:8080");
@@ -22,7 +22,7 @@ class SimulatorConfigTest {
     @Test
     void readsEnvironmentVariables() {
         SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of(
-                "MQTT_PASSWORD", "secret", "MQTT_URL", "tcp://mosquitto:1883", "BACKEND_URL", "http://backend:8080/",
+                "MQTT_PASSWORD", "secret", "SIM_BACKEND_PASSWORD", "pw", "MQTT_URL", "tcp://mosquitto:1883", "BACKEND_URL", "http://backend:8080/",
                 "SIM_INTERVAL_SECONDS", "15", "SIM_MAX_METERS", "1000"));
 
         assertThat(config.mqttUrl()).isEqualTo("tcp://mosquitto:1883");
@@ -46,23 +46,29 @@ class SimulatorConfigTest {
 
     @Test
     void neverPrintsThePassword() {
-        assertThat(SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "s3cr3t")).toString()).doesNotContain("s3cr3t");
+        assertThat(SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "s3cr3t", "SIM_BACKEND_PASSWORD", "b4ck3nd")).toString()).doesNotContain("s3cr3t").doesNotContain("b4ck3nd");
     }
 
     @Test
     void allowsAnomaliesInThePastOnlyWithinTheBackfilledHistory() {
-        SimulatorConfig demo = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x",
+        SimulatorConfig demo = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
                 "SIM_BACKFILL_DAYS", "4", "SIM_ANOMALY_DELAY_MINUTES", "-1500"));
         assertThat(demo.anomalyDelay()).isEqualTo(Duration.ofMinutes(-1500));
 
-        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x",
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
                 "SIM_BACKFILL_DAYS", "1", "SIM_ANOMALY_DELAY_MINUTES", "-1500")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void failsFastOnAnUnknownAnomalyType() {
-        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_ANOMALIES", "CEAC-E-000001:FIRE")))
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw", "SIM_ANOMALIES", "CEAC-E-000001:FIRE")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void requiresTheBackendPassword() {
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x")))
+                .hasMessageContaining("SIM_BACKEND_PASSWORD");
     }
 }

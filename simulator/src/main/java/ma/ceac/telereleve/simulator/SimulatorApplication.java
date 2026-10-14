@@ -27,7 +27,7 @@ public final class SimulatorApplication {
         SimulatorConfig config = SimulatorConfig.fromEnvironment(System.getenv());
         log.info("Starting with {}", config);
 
-        List<SimulatedMeter> meters = new MeterRegistryClient(config.backendUrl())
+        List<SimulatedMeter> meters = new MeterRegistryClient(config.backendUrl(), config.backendUsername(), config.backendPassword())
                 .fetchActiveMetersWithRetry(Duration.ofMinutes(5));
         if (config.maxMeters() > 0 && meters.size() > config.maxMeters()) {
             meters = meters.subList(0, config.maxMeters());
