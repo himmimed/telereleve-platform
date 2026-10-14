@@ -45,4 +45,17 @@ class FesMeterGeneratorTest {
 
         assertThat(large.subList(0, 50)).isEqualTo(small);
     }
+
+    @Test
+    void variesClientNamesAndStreets() {
+        // Regression: with java.util.Random and consecutive seeds, 37 of 50 meters were "Foyer Chraibi".
+        List<MeterRequest> meters = FesMeterGenerator.generate(50, 0.3);
+
+        long households = meters.stream().filter(m -> m.clientName().startsWith("Foyer ")).count();
+        long distinctHouseholds = meters.stream().map(MeterRequest::clientName)
+                .filter(name -> name.startsWith("Foyer ")).distinct().count();
+        assertThat(distinctHouseholds).isGreaterThanOrEqualTo(households / 2);
+        assertThat(meters.stream().map(m -> m.address().replaceFirst("^\\d+, ", "")).distinct().count())
+                .isGreaterThanOrEqualTo(25);
+    }
 }

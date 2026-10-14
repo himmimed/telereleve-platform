@@ -2,7 +2,7 @@ package ma.ceac.telereleve.meter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 import ma.ceac.telereleve.meter.dto.MeterRequest;
 
 /**
@@ -67,8 +67,10 @@ public final class FesMeterGenerator {
     public static List<MeterRequest> generate(int count, double waterShare) {
         List<MeterRequest> meters = new ArrayList<>(count);
         for (int n = 1; n <= count; n++) {
-            // One seeded random per meter: meter n is identical whatever the total count.
-            Random random = new Random(20_261_011L * 31 + n);
+            // One seeded random per meter: meter n is identical whatever the total count. SplittableRandom
+            // mixes its seed; java.util.Random's first draws barely change between consecutive seeds
+            // (37 of the 50 demo meters got the same client name).
+            SplittableRandom random = new SplittableRandom(20_261_011L * 31 + n);
             MeterType type = typeOf(n, waterShare);
             Quarter quarter = QUARTERS.get((n - 1) % QUARTERS.size());
             boolean business = n % 4 == 2;
