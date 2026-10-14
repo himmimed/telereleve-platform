@@ -21,13 +21,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import type * as Leaflet from 'leaflet';
 import { catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
-import { AlertApi, MeterApi, Period } from '../../core/api/api.services';
+import { AlertApi, MeterApi } from '../../core/api/api.services';
 import { AuthStore } from '../../core/auth/auth.store';
 import { METER_STATUS_LABEL, RULE_LABEL, UNIT_LABEL } from '../../core/labels';
 import { isVoltageInRange, meterHealth, signalQuality } from '../../core/meter-rules';
 import { Alert, Consumption, ConsumptionStep, Meter, MeterDetails } from '../../core/models';
 import { ThemeService, resolveColor } from '../../core/theme.service';
 import { ChartPoint, ConsumptionChart } from '../../shared/consumption-chart';
+import { PeriodKey, periodRange } from '../../shared/calendar';
 import { DateTimePipe, NumberPipe, RelativeTimePipe, bucketLabels } from '../../shared/format';
 import { baseLayer } from '../../shared/map-tiles';
 import {
@@ -41,37 +42,12 @@ import {
 } from '../../shared/ui';
 import { MeterFormDialog } from './meter-form.dialog';
 
-type PeriodKey = '24h' | '7d' | '30d' | '12m';
-
 const PERIODS: Record<PeriodKey, { label: string; step: ConsumptionStep; caption: string }> = {
   '24h': { label: '24 h', step: 'hour', caption: 'les dernières 24 h, par heure' },
   '7d': { label: '7 jours', step: 'day', caption: 'les 7 derniers jours, par jour' },
   '30d': { label: '30 jours', step: 'day', caption: 'les 30 derniers jours, par jour' },
   '12m': { label: '12 mois', step: 'month', caption: 'les 12 derniers mois, par mois' },
 };
-
-/** Start of the period, aligned on whole buckets (midnight / first day of month). */
-export function periodRange(key: PeriodKey, now = new Date()): Period {
-  const from = new Date(now);
-  switch (key) {
-    case '24h':
-      from.setHours(from.getHours() - 23, 0, 0, 0);
-      break;
-    case '7d':
-      from.setDate(from.getDate() - 6);
-      from.setHours(0, 0, 0, 0);
-      break;
-    case '30d':
-      from.setDate(from.getDate() - 29);
-      from.setHours(0, 0, 0, 0);
-      break;
-    case '12m':
-      from.setMonth(from.getMonth() - 11, 1);
-      from.setHours(0, 0, 0, 0);
-      break;
-  }
-  return { from: from.toISOString(), to: now.toISOString() };
-}
 
 type Loaded<T> = { status: 'loading' } | { status: 'error' } | { status: 'ready'; value: T };
 

@@ -22,6 +22,7 @@ import { AlertApi, DashboardApi, MeterApi } from '../../core/api/api.services';
 import { AuthStore } from '../../core/auth/auth.store';
 import { RULE_LABEL } from '../../core/labels';
 import { Alert, DashboardStats, MapMarker, MapStatus, MeterType, Severity, TrendPoint } from '../../core/models';
+import { PLATFORM_TIME_ZONE, periodRange } from '../../shared/calendar';
 import { ChartPoint, ConsumptionChart } from '../../shared/consumption-chart';
 import { NumberPipe, RelativeTimePipe, bucketLabels } from '../../shared/format';
 import { EmptyState, MeterTypeLabel, PageHeader, SeverityBadge, Skeleton } from '../../shared/ui';
@@ -90,7 +91,7 @@ export class DashboardPage {
   protected readonly updatedLabel = computed(() => {
     const loadedAt = this.data()?.loadedAt;
     return loadedAt
-      ? `Actualisé à ${loadedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}, mise à jour automatique toutes les 30 s`
+      ? `Actualisé à ${loadedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE })}, mise à jour automatique toutes les 30 s`
       : 'Chargement des indicateurs';
   });
 
@@ -134,12 +135,7 @@ export class DashboardPage {
   }
 
   private load(period: TrendPeriod) {
-    const now = new Date();
-    const from = new Date(now.getTime() - (period === '24h' ? 24 : 7 * 24) * 3_600_000);
-    if (period === '7d') {
-      from.setHours(0, 0, 0, 0);
-    }
-    const range = { from: from.toISOString(), to: now.toISOString() };
+    const range = periodRange(period);
     const openAlerts = (status: 'NEW' | 'IN_PROGRESS') =>
       this.alertApi.search({ status, page: 0, size: 6 }).pipe(map((page) => page.content));
 

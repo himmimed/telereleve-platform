@@ -1,5 +1,6 @@
 // French formatting helpers shared by templates (through the pipes below) and charts.
 import { Pipe, PipeTransform } from '@angular/core';
+import { PLATFORM_TIME_ZONE } from './calendar';
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
 
@@ -43,18 +44,20 @@ export function formatRelative(iso: string | null | undefined, now = Date.now())
   return relative.format(Math.round(seconds / (30 * 86_400)), 'month');
 }
 
-const dateTime = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+const dateTime = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short', timeZone: PLATFORM_TIME_ZONE });
 
 export function formatDateTime(iso: string | null | undefined): string {
   return iso ? dateTime.format(new Date(iso)) : '-';
 }
 
-const hourShort = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const hourFull = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-const dayShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
-const dayFull = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-const monthShort = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
-const monthFull = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+const hourShort = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE });
+const hourFull = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE });
+const dayShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: PLATFORM_TIME_ZONE });
+const dayFull = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: PLATFORM_TIME_ZONE });
+const monthShort = new Intl.DateTimeFormat('fr-FR', { month: 'short', timeZone: PLATFORM_TIME_ZONE });
+const monthFull = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: PLATFORM_TIME_ZONE });
+
+/** Dates are shown on the platform calendar (UTC+1), like the backend's buckets (D33). */
 
 /** Axis and tooltip labels of a time bucket ("14:00" / "lundi 6 octobre à 14:00"). */
 export function bucketLabels(iso: string, step: 'hour' | 'day' | 'month'): { label: string; fullLabel: string } {

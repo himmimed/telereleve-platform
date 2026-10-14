@@ -19,6 +19,7 @@ import {
   UserSummary,
 } from '../models';
 import { RULE_SEVERITY } from '../labels';
+import { startOfDay, startOfMonth } from '../../shared/calendar';
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -292,12 +293,13 @@ export class MockDb {
     if (m.anomaly === 'ZERO' && hourStart >= now - 30 * HOUR) {
       return 0;
     }
-    const date = new Date(hourStart);
+    // Platform local time (UTC+1): its UTC fields read as Moroccan time.
+    const date = new Date(hourStart + HOUR);
     const profile = m.type === 'ELECTRICITY' ? ELECTRICITY_PROFILE : WATER_PROFILE;
-    const weekend = date.getDay() === 0 || date.getDay() === 6;
+    const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
     const weekFactor = weekend ? (m.business ? 0.55 : 1.12) : 1;
     const noise = 0.88 + hash01(m.seq, Math.floor(hourStart / HOUR)) * 0.24;
-    let value = (m.dailyBase / 24) * profile[date.getHours()] * weekFactor * noise;
+    let value = (m.dailyBase / 24) * profile[date.getUTCHours()] * weekFactor * noise;
     if (m.anomaly === 'SPIKE' && hourStart >= floorHour(now) - HOUR) {
       value *= 5;
     }
@@ -567,24 +569,20 @@ export class MockDb {
   }
 }
 
+/** Buckets on the platform calendar (UTC+1), like the backend. */
 export function alignBucket(t: number, step: ConsumptionStep): number {
-  const d = new Date(t);
   if (step === 'hour') {
     return floorHour(t);
   }
-  if (step === 'day') {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  }
-  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  return (step === 'day' ? startOfDay(new Date(t)) : startOfMonth(new Date(t))).getTime();
 }
 
 export function nextBucket(t: number, step: ConsumptionStep): number {
-  const d = new Date(t);
   if (step === 'hour') {
     return t + HOUR;
   }
   if (step === 'day') {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+    return t + 24 * HOUR; // fixed offset: every day lasts 24 h
   }
-  return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  return startOfMonth(new Date(t), -1).getTime();
 }
