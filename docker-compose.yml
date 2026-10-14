@@ -110,6 +110,21 @@ services:
       SIM_ANOMALY_PERCENT: ${SIM_ANOMALY_PERCENT:-0}
       SIM_ANOMALY_DELAY_MINUTES: ${SIM_ANOMALY_DELAY_MINUTES:--1500}
 
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    # nginx: the Angular application, and /api forwarded to the backend.
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ | grep -q '<app-root'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   timescale-data:
   mosquitto-data:
