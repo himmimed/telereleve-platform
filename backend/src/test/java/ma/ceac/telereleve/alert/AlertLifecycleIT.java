@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
+import ma.ceac.telereleve.ApiClient;
 import ma.ceac.telereleve.TestcontainersConfiguration;
 import ma.ceac.telereleve.anomaly.AnomalyEngine;
 import ma.ceac.telereleve.anomaly.RuleConfigService;
@@ -22,14 +23,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import ma.ceac.telereleve.user.AppUserRepository;
+import ma.ceac.telereleve.user.Role;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Alert lifecycle on a real database: creation, no duplicates, auto-resolution, manual changes, API. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -39,7 +42,14 @@ class AlertLifecycleIT {
     private static final Instant T0 = Instant.now().truncatedTo(ChronoUnit.MINUTES).minus(Duration.ofHours(2));
 
     @Autowired
-    private TestRestTemplate http;
+    private TestRestTemplate rest;
+    @Autowired
+    private AppUserRepository users;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /** Signed in as OPERATOR (real login, Bearer token). */
+    private ApiClient http;
     @Autowired
     private MeterRepository meters;
     @Autowired
@@ -55,10 +65,9 @@ class AlertLifecycleIT {
 
     @BeforeEach
     void setUp() {
+        http = ApiClient.as(Role.OPERATOR, rest, users, passwordEncoder);
         jdbc.execute("TRUNCATE alert, reading, meter, alert_rule_config CASCADE");
         meter = meters.save(new Meter("CEAC-E-000100", MeterType.ELECTRICITY, "Foyer Tazi", "Fès", 34, -5, 15, MeterStatus.ACTIVE));
-        // PATCH needs an HTTP client that supports it (the JDK one does).
-        http.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
     }
 
     /** Same path as ingestion: store, move last_reading_at, run the engine. */
@@ -127,14 +136,15 @@ class AlertLifecycleIT {
 
     @Test
     void aDisabledRuleRaisesNothing() {
-        ResponseEntity<JsonNode> disabled = http.exchange("/api/rules/A5", HttpMethod.PUT,
+        ApiClient admin = ApiClient.as(Role.ADMIN, rest, users, passwordEncoder);
+        ResponseEntity<JsonNode> disabled = admin.exchange("/api/rules/A5", HttpMethod.PUT,
                 new HttpEntity<>(Map.of("enabled", false, "threshold", 10)), JsonNode.class);
         assertThat(disabled.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         read(0, "100", "300");
 
         assertThat(count("A5", "true")).isZero();
-        JsonNode rules = http.getForObject("/api/rules", JsonNode.class);
+        JsonNode rules = admin.getForObject("/api/rules", JsonNode.class);
         assertThat(rules).hasSize(5);
         assertThat(rules.get(4).get("ruleCode").asText()).isEqualTo("A5");
         assertThat(rules.get(4).get("enabled").asBoolean()).isFalse();

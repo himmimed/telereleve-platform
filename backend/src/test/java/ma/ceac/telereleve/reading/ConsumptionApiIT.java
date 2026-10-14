@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import ma.ceac.telereleve.ApiClient;
 import ma.ceac.telereleve.TestcontainersConfiguration;
 import ma.ceac.telereleve.meter.Meter;
 import ma.ceac.telereleve.meter.MeterRepository;
@@ -15,11 +16,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import ma.ceac.telereleve.user.AppUserRepository;
+import ma.ceac.telereleve.user.Role;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Consumption aggregation (TimescaleDB time_bucket) and CSV export on real data. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -27,7 +31,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class ConsumptionApiIT {
 
     @Autowired
-    private TestRestTemplate http;
+    private TestRestTemplate rest;
+    @Autowired
+    private AppUserRepository users;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /** Signed in as OPERATOR (real login, Bearer token). */
+    private ApiClient http;
     @Autowired
     private MeterRepository meters;
     @Autowired
@@ -39,6 +50,7 @@ class ConsumptionApiIT {
 
     @BeforeEach
     void setUp() {
+        http = ApiClient.as(Role.OPERATOR, rest, users, passwordEncoder);
         jdbc.execute("TRUNCATE alert, reading, meter CASCADE");
         meter = meters.save(new Meter("CEAC-E-000500", MeterType.ELECTRICITY, "Foyer", "Fès", 34, -5, 15, MeterStatus.ACTIVE));
         // 09:50 (before the period) 100 | 10:10 101 | 10:50 103 | no reading in hour 11 |

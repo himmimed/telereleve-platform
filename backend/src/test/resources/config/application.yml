@@ -7,3 +7,7 @@ app:
     mail:
       # No SMTP server in tests; e-mail composition is unit-tested.
       enabled: false
+  security:
+    jwt:
+      # Test-only key (not a secret: it signs tokens for throwaway test databases).
+      secret: dGVzdC1rZXktb25seS1mb3ItYXV0b21hdGVkLXRlc3RzLW5vdC1hLXNlY3JldC0xMjM0NTY=

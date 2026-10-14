@@ -6,10 +6,11 @@ import ma.ceac.telereleve.alert.Alert;
 import ma.ceac.telereleve.alert.AlertStatus;
 import ma.ceac.telereleve.alert.Severity;
 import ma.ceac.telereleve.meter.MeterType;
+import ma.ceac.telereleve.user.dto.UserDtos.UserSummary;
 
 /**
- * An alert with the identity of its meter, so a list of alerts needs no extra request.
- * assignedTo is null until assignment is implemented with users (phase 4).
+ * An alert with the identity of its meter and of its assignee (null if unassigned), so a list of
+ * alerts needs no extra request.
  */
 public record AlertResponse(
         UUID id,
@@ -22,11 +23,11 @@ public record AlertResponse(
         String message,
         Instant detectedAt,
         Instant resolvedAt,
-        Object assignedTo) {
+        UserSummary assignedTo) {
 
     public static AlertResponse from(Alert alert) {
         return new AlertResponse(alert.getId(), alert.getMeter().getId(), alert.getMeter().getSerial(),
                 alert.getMeter().getType(), alert.getRuleCode(), alert.getSeverity(), alert.getStatus(),
-                alert.getMessage(), alert.getDetectedAt(), alert.getResolvedAt(), null);
+                alert.getMessage(), alert.getDetectedAt(), alert.getResolvedAt(), UserSummary.from(alert.getAssignee()));
     }
 }

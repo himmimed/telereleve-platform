@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
+import ma.ceac.telereleve.ApiClient;
 import ma.ceac.telereleve.TestcontainersConfiguration;
 import ma.ceac.telereleve.anomaly.RuleConfigService;
 import ma.ceac.telereleve.config.DevDataSeeder;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import ma.ceac.telereleve.user.AppUserRepository;
+import ma.ceac.telereleve.user.Role;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
@@ -19,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Meter API end to end on a real TimescaleDB: persistence, filters, uniqueness, dev seed. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -26,7 +30,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class MeterApiIT {
 
     @Autowired
-    private TestRestTemplate http;
+    private TestRestTemplate rest;
+    @Autowired
+    private AppUserRepository users;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /** Signed in as ADMIN (real login, Bearer token). */
+    private ApiClient http;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -39,6 +50,7 @@ class MeterApiIT {
 
     @BeforeEach
     void cleanTables() {
+        http = ApiClient.as(Role.ADMIN, rest, users, passwordEncoder);
         jdbc.execute("TRUNCATE alert, reading, meter, alert_rule_config CASCADE");
     }
 
@@ -118,12 +130,12 @@ class MeterApiIT {
 
     @Test
     void devSeedCreatesTheParkOnceAndGrowsIt() {
-        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(50, 0.3)).run(null);
-        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(50, 0.3)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, users, passwordEncoder, new SeedProperties(50, 0.3, null, null)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, users, passwordEncoder, new SeedProperties(50, 0.3, null, null)).run(null);
         assertThat(meters.count()).isEqualTo(50);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM meter WHERE type = 'WATER'", Integer.class)).isEqualTo(15);
 
-        new DevDataSeeder(meters, ruleConfigs, new SeedProperties(120, 0.3)).run(null);
+        new DevDataSeeder(meters, ruleConfigs, users, passwordEncoder, new SeedProperties(120, 0.3, null, null)).run(null);
         assertThat(meters.count()).isEqualTo(120);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM alert_rule_config", Integer.class)).isEqualTo(5);
     }

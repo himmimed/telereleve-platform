@@ -75,7 +75,15 @@ app:
       from: telereleve@ceac.test
       to: ${ALERT_MAIL_TO:exploitation@ceac.test}
       platform-url: ${PLATFORM_URL:http://localhost:4200}
-  # Demo meter park, used only by DevDataSeeder (dev profile).
+  security:
+    jwt:
+      # Base64 HMAC key of at least 256 bits, from the environment only (see .env.example).
+      secret: ${JWT_SECRET:}
+      ttl: PT8H
+      issuer: ceac-telereleve
+  # Demo data, used only by DevDataSeeder (dev profile).
   seed:
     meter-count: ${APP_SEED_METER_COUNT:50}
     water-share: 0.3
+    demo-password: ${APP_SEED_DEMO_PASSWORD:}
+    simulator-password: ${SIMULATOR_PASSWORD:}

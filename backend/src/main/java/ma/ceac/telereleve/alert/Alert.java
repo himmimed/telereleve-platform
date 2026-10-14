@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import ma.ceac.telereleve.meter.Meter;
+import ma.ceac.telereleve.user.AppUser;
 
 @Entity
 @Table(name = "alert")
@@ -47,9 +48,10 @@ public class Alert {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
-    /** User the alert is assigned to (users and assignment arrive in phase 4). */
-    @Column(name = "assigned_to")
-    private UUID assignedTo;
+    /** Technician the alert is assigned to, if any. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to")
+    private AppUser assignee;
 
     protected Alert() {
         // for JPA
@@ -105,7 +107,11 @@ public class Alert {
         return resolvedAt;
     }
 
-    public UUID getAssignedTo() {
-        return assignedTo;
+    public AppUser getAssignee() {
+        return assignee;
+    }
+
+    public void assignTo(AppUser technician) {
+        this.assignee = technician;
     }
 }

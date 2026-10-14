@@ -19,6 +19,7 @@ import ma.ceac.telereleve.common.NotFoundException;
 import ma.ceac.telereleve.reading.ReadingQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -26,8 +27,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Web layer only: JSON shape, validation and RFC 7807 errors. The service is mocked. */
+/**
+ * Web layer only: JSON shape, validation and RFC 7807 errors. The service is mocked and the security
+ * filters are off here; security has its own tests (SecurityRulesTest, AuthIT).
+ */
 @WebMvcTest(MeterController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class MeterControllerTest {
 
     private static final String VALID_BODY = """

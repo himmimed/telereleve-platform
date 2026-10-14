@@ -9,8 +9,10 @@ final class AlertSpecifications {
     private AlertSpecifications() {
     }
 
-    static Specification<Alert> matching(AlertStatus status, Severity severity, String ruleCode, UUID meterId) {
+    static Specification<Alert> matching(AlertStatus status, Severity severity, String ruleCode, UUID meterId,
+                                         UUID assigneeId) {
         return Specification.allOf(
+                (root, query, cb) -> assigneeId == null ? null : cb.equal(root.get("assignee").get("id"), assigneeId),
                 (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status),
                 (root, query, cb) -> severity == null ? null : cb.equal(root.get("severity"), severity),
                 (root, query, cb) -> ruleCode == null ? null : cb.equal(root.get("ruleCode"), ruleCode),
