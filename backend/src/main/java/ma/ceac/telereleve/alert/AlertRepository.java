@@ -45,6 +45,13 @@ public interface AlertRepository extends JpaRepository<Alert, UUID>, JpaSpecific
     @Query("update Alert a set a.assignee = null where a.assignee.id = :userId")
     int unassignAll(UUID userId);
 
+    /** Rules with an open alert on a meter. */
+    @Query("""
+            select a.ruleCode from Alert a
+            where a.meter.id = :meterId
+              and a.status in (ma.ceac.telereleve.alert.AlertStatus.NEW, ma.ceac.telereleve.alert.AlertStatus.IN_PROGRESS)""")
+    Set<String> findOpenRuleCodes(UUID meterId);
+
     /** Meters with at least one open alert (map status). */
     @Query("""
             select distinct a.meter.id from Alert a

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import ma.ceac.telereleve.alert.AlertService;
 import ma.ceac.telereleve.meter.Meter;
 import ma.ceac.telereleve.meter.MeterStatus;
@@ -53,7 +54,9 @@ public class AnomalyEngine {
         if (meter.getStatus() != MeterStatus.ACTIVE) {
             return;
         }
-        ReadingHistory history = new JdbcReadingHistory(readings, meter.getId());
+        ReadingHistory history = new JdbcReadingHistory(readings, meter.getId(), reading);
+        // One query instead of one per rule: raise only when no alert is open, resolve only when one is.
+        Set<String> open = alerts.openRuleCodes(meter.getId());
         for (AnomalyRule rule : rules) {
             RuleSettings ruleSettings = settings.getOrDefault(rule.code(), RuleSettings.DEFAULTS.get(rule.code()));
             if (rule.trigger() != trigger || ruleSettings == null || !ruleSettings.enabled()) {
@@ -62,8 +65,10 @@ public class AnomalyEngine {
             try {
                 Optional<AnomalyResult> result = rule.evaluate(meter, new RuleContext(now, reading, ruleSettings, history));
                 if (result.isPresent()) {
-                    alerts.raise(meter.getId(), rule.code(), result.get().severity(), result.get().message(), now);
-                } else if (rule.autoResolve()) {
+                    if (!open.contains(rule.code())) {
+                        alerts.raise(meter.getId(), rule.code(), result.get().severity(), result.get().message(), now);
+                    }
+                } else if (rule.autoResolve() && open.contains(rule.code())) {
                     alerts.resolve(meter.getId(), rule.code(), now);
                 }
             } catch (RuntimeException e) {

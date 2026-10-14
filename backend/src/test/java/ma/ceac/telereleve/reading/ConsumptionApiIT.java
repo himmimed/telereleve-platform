@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import ma.ceac.telereleve.ApiClient;
 import ma.ceac.telereleve.TestcontainersConfiguration;
 import ma.ceac.telereleve.meter.Meter;
@@ -98,6 +100,20 @@ class ConsumptionApiIT {
         assertThat(result.get("points").get(0).get("bucket").asText()).isEqualTo("2026-10-11T23:00:00Z");
         // One bucket for the whole day: last index of the day (109) minus the last index before it (100).
         assertThat(result.get("total").decimalValue()).isEqualByComparingTo("9");
+    }
+
+    @Test
+    void findsTheLatestReadingAtOrBeforeSeveralInstantsInOneQuery() {
+        // Used by rule A2 (16 instants per reading): exact match, between readings, after the last one,
+        // and before the first one (absent).
+        Map<Instant, StoredReading> latest = readings.findLatestAtOrBefore(meter.getId(), List.of(
+                Instant.parse("2026-10-12T09:00:00Z"), Instant.parse("2026-10-12T10:10:00Z"),
+                Instant.parse("2026-10-12T11:30:00Z"), Instant.parse("2026-10-12T14:00:00Z")));
+
+        assertThat(latest).hasSize(3).doesNotContainKey(Instant.parse("2026-10-12T09:00:00Z"));
+        assertThat(latest.get(Instant.parse("2026-10-12T10:10:00Z")).index()).isEqualByComparingTo("101");
+        assertThat(latest.get(Instant.parse("2026-10-12T11:30:00Z")).index()).isEqualByComparingTo("103");
+        assertThat(latest.get(Instant.parse("2026-10-12T14:00:00Z")).readAt()).isEqualTo(Instant.parse("2026-10-12T13:10:00Z"));
     }
 
     @Test

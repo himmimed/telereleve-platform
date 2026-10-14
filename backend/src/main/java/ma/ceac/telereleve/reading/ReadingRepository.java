@@ -6,10 +6,13 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import ma.ceac.telereleve.meter.MeterType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
@@ -73,6 +76,28 @@ public class ReadingRepository {
     public long countByMeter(UUID meterId) {
         Long count = jdbc.queryForObject("SELECT count(*) FROM reading WHERE meter_id = ?", Long.class, meterId);
         return count == null ? 0 : count;
+    }
+
+    /**
+     * Most recent reading at or before each instant, in one query (one indexed lookup per instant on the
+     * server). Instants without reading are absent from the result.
+     */
+    public Map<Instant, StoredReading> findLatestAtOrBefore(UUID meterId, List<Instant> instants) {
+        if (instants.isEmpty()) {
+            return Map.of();
+        }
+        String array = instants.stream().map(Instant::toString).collect(Collectors.joining(",", "{", "}"));
+        Map<Instant, StoredReading> result = new HashMap<>();
+        jdbc.query("""
+                SELECT t.at, r.meter_id, r.read_at, r.index_value, r.voltage, r.signal_strength
+                FROM unnest(?::timestamptz[]) AS t(at)
+                CROSS JOIN LATERAL (
+                    SELECT meter_id, read_at, index_value, voltage, signal_strength
+                    FROM reading WHERE meter_id = ? AND read_at <= t.at
+                    ORDER BY read_at DESC LIMIT 1) r""",
+                (RowCallbackHandler) rs -> result.put(rs.getTimestamp("at").toInstant(), map(rs, 0)),
+                array, meterId);
+        return result;
     }
 
     /** First and last index of each non-empty time bucket in [from, to), buckets aligned on the local calendar. */

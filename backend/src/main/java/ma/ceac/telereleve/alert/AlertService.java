@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import ma.ceac.telereleve.alert.dto.AlertUpdateRequest;
 import ma.ceac.telereleve.common.BadRequestException;
@@ -54,6 +55,12 @@ public class AlertService {
         this.users = users;
         this.events = events;
         this.clock = clock;
+    }
+
+    /** Codes of the rules with an open alert (NEW or IN_PROGRESS) on the meter. */
+    @Transactional(readOnly = true)
+    public Set<String> openRuleCodes(UUID meterId) {
+        return alerts.findOpenRuleCodes(meterId);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -2,6 +2,9 @@ package ma.ceac.telereleve.anomaly;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import ma.ceac.telereleve.reading.StoredReading;
 
@@ -13,6 +16,18 @@ public interface ReadingHistory {
 
     /** Most recent reading at or before t. */
     Optional<StoredReading> latestAtOrBefore(Instant t);
+
+    /**
+     * latestAtOrBefore for several instants at once, keyed by instant; an instant without reading is
+     * absent. One query in the database implementation (rule A2 needs 16 of them per reading).
+     */
+    default Map<Instant, StoredReading> latestAtOrBefore(Collection<Instant> instants) {
+        Map<Instant, StoredReading> result = new HashMap<>();
+        for (Instant t : instants) {
+            latestAtOrBefore(t).ifPresent(r -> result.put(t, r));
+        }
+        return result;
+    }
 
     /** Most recent reading strictly before t. */
     Optional<StoredReading> latestBefore(Instant t);

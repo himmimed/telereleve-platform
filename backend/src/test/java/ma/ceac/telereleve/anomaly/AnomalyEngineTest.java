@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import ma.ceac.telereleve.alert.AlertService;
 import ma.ceac.telereleve.alert.Severity;
@@ -69,6 +71,7 @@ class AnomalyEngineTest {
     @Test
     void resolvesWhenTheAnomalyIsGoneIfTheRuleAllowsIt() {
         when(ruleConfigs.all()).thenReturn(RuleSettings.DEFAULTS);
+        when(alerts.openRuleCodes(any())).thenReturn(Set.of("A5", "A4"));
 
         engine(rule("A5", AnomalyRule.Trigger.ON_READING, true, Optional.empty()),
                 rule("A4", AnomalyRule.Trigger.ON_READING, false, Optional.empty())).onReading(electricity(), reading);
@@ -85,7 +88,27 @@ class AnomalyEngineTest {
 
         engine(rule("A4", AnomalyRule.Trigger.ON_READING, false, FOUND)).onReading(electricity(), reading);
 
-        verifyNoInteractions(alerts);
+        verify(alerts).openRuleCodes(any());
+        verifyNoMoreInteractions(alerts);
+    }
+
+    @Test
+    void doesNotRaiseAgainWhileTheAlertIsOpen() {
+        when(ruleConfigs.all()).thenReturn(RuleSettings.DEFAULTS);
+        when(alerts.openRuleCodes(any())).thenReturn(Set.of("A4"));
+
+        engine(rule("A4", AnomalyRule.Trigger.ON_READING, false, FOUND)).onReading(electricity(), reading);
+
+        verify(alerts, never()).raise(any(), any(), any(), anyString(), any());
+    }
+
+    @Test
+    void doesNotTryToResolveWhenNoAlertIsOpen() {
+        when(ruleConfigs.all()).thenReturn(RuleSettings.DEFAULTS);
+
+        engine(rule("A5", AnomalyRule.Trigger.ON_READING, true, Optional.empty())).onReading(electricity(), reading);
+
+        verify(alerts, never()).resolve(any(), any(), any());
     }
 
     @Test
