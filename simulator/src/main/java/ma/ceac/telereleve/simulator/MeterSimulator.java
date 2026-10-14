@@ -127,6 +127,8 @@ public class MeterSimulator implements AutoCloseable {
         scheduler.shutdownNow();
         try {
             scheduler.awaitTermination(5, TimeUnit.SECONDS);
+            // Final count, compared with the readings stored by the backend in the load test.
+            log.info("Stopped after publishing {} readings ({} failed)", published.get(), failed.get());
             if (client != null && client.isConnected()) {
                 client.disconnect(Duration.ofSeconds(5).toMillis());
             }
