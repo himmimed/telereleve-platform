@@ -84,4 +84,27 @@ class SpikeRuleTest {
 
         assertThat(rule.evaluate(electricity(), ctx)).isPresent();
     }
+
+    @Test
+    void aGapInTheDataIsNotReadAsASpike() {
+        // Normal history for 7 days, then the meter stops reporting for 41 hours (meter or network down)
+        // and reports again: the consumption of the whole gap must not count as "the last hour".
+        InMemoryReadingHistory history = new InMemoryReadingHistory();
+        Instant gapStart = NOW.minus(Duration.ofHours(41));
+        BigDecimal last = history.addSeries(gapStart.minus(Duration.ofDays(7)), gapStart, Duration.ofMinutes(15),
+                new BigDecimal("1000"), new BigDecimal("0.25"));
+        history.add(NOW, last.add(new BigDecimal("41")).toPlainString());
+
+        assertThat(evaluate(history)).isEmpty();
+    }
+
+    @Test
+    void measuresARateWhenReadingsAreNotExactlyOnTheHour() {
+        // Readings every 15 min, 7 minutes off the hour: the rate is still about 1 kWh/h, no spike.
+        InMemoryReadingHistory history = new InMemoryReadingHistory();
+        history.addSeries(NOW.minus(Duration.ofDays(8)).plus(Duration.ofMinutes(7)), NOW, Duration.ofMinutes(15),
+                new BigDecimal("1000"), new BigDecimal("0.25"));
+
+        assertThat(evaluate(history)).isEmpty();
+    }
 }

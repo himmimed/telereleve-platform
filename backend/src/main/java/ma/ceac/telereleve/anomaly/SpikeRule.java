@@ -7,15 +7,19 @@ import java.time.Instant;
 import java.util.Optional;
 import ma.ceac.telereleve.alert.Severity;
 import ma.ceac.telereleve.meter.Meter;
+import ma.ceac.telereleve.reading.StoredReading;
 import org.springframework.stereotype.Component;
 
 /**
  * A2 SPIKE (MEDIUM): consumption of the last hour above `threshold` (3 by default) times the average
  * consumption of the same hour over the previous days (7 by default).
- * Comparing with the same hour of previous days, not with the daily average, avoids flagging the
- * normal evening peak.
- * Skipped with less than 3 days of history, and when the reference average is 0 (the ratio would be
- * meaningless, e.g. a water meter at night).
+ * - Compared with the same hour of previous days, not with the daily average, so the normal evening
+ *   peak is not flagged.
+ * - Skipped with fewer than 3 days of samples, and when that hour usually consumes nothing (the ratio
+ *   would be meaningless, e.g. a water meter at night).
+ * - Measured as an hourly rate between real readings close to both ends of the hour. After a gap in
+ *   the data (meter or network down), the consumption of the whole gap must not be read as "the last
+ *   hour": an hour without a reading near its start or end is not judged (D31).
  */
 @Component
 public class SpikeRule implements AnomalyRule {
@@ -23,6 +27,7 @@ public class SpikeRule implements AnomalyRule {
     static final int MIN_HISTORY_DAYS = 3;
     private static final Duration HOUR = Duration.ofHours(1);
     private static final Duration DAY = Duration.ofDays(1);
+    private static final BigDecimal SECONDS_PER_HOUR = BigDecimal.valueOf(3600);
 
     @Override
     public String code() {
@@ -31,12 +36,10 @@ public class SpikeRule implements AnomalyRule {
 
     @Override
     public Optional<AnomalyResult> evaluate(Meter meter, RuleContext ctx) {
-        Optional<Instant> first = ctx.history().firstReadingAt();
-        if (first.isEmpty()) {
-            return Optional.empty();
-        }
         Instant now = ctx.now();
-        Optional<BigDecimal> lastHour = ctx.history().consumption(now.minus(HOUR), now);
+        // A reading must exist within two reading intervals of each end of the hour.
+        Duration tolerance = Duration.ofMinutes(2L * meter.getReadingIntervalMin());
+        Optional<BigDecimal> lastHour = hourlyRate(ctx.history(), now.minus(HOUR), now, tolerance);
         if (lastHour.isEmpty() || lastHour.get().signum() <= 0) {
             return Optional.empty();
         }
@@ -46,13 +49,9 @@ public class SpikeRule implements AnomalyRule {
         int samples = 0;
         for (int d = 1; d <= days; d++) {
             Instant to = now.minus(DAY.multipliedBy(d));
-            Instant from = to.minus(HOUR);
-            if (first.get().isAfter(from)) {
-                continue; // the meter did not exist yet at that hour
-            }
-            Optional<BigDecimal> consumed = ctx.history().consumption(from, to);
-            if (consumed.isPresent()) {
-                sum = sum.add(consumed.get().max(BigDecimal.ZERO));
+            Optional<BigDecimal> rate = hourlyRate(ctx.history(), to.minus(HOUR), to, tolerance);
+            if (rate.isPresent()) {
+                sum = sum.add(rate.get().max(BigDecimal.ZERO));
                 samples++;
             }
         }
@@ -70,5 +69,25 @@ public class SpikeRule implements AnomalyRule {
                 "Consommation de la dernière heure : %s %s, soit %s fois la moyenne de cette heure sur %d jours (%s %s)."
                         .formatted(Messages.number(lastHour.get(), 3), unit, Messages.number(ratio, 1), samples,
                                 Messages.number(average, 3), unit)));
+    }
+
+    /**
+     * Consumption per hour between the readings that bracket [from, to], or empty if either reading is
+     * further than `tolerance` from its end of the interval (data missing around it).
+     */
+    static Optional<BigDecimal> hourlyRate(ReadingHistory history, Instant from, Instant to, Duration tolerance) {
+        Optional<StoredReading> start = history.latestAtOrBefore(from);
+        Optional<StoredReading> end = history.latestAtOrBefore(to);
+        if (start.isEmpty() || end.isEmpty()
+                || start.get().readAt().isBefore(from.minus(tolerance))
+                || end.get().readAt().isBefore(to.minus(tolerance))) {
+            return Optional.empty();
+        }
+        long seconds = Duration.between(start.get().readAt(), end.get().readAt()).toSeconds();
+        if (seconds <= 0) {
+            return Optional.empty();
+        }
+        BigDecimal consumed = end.get().index().subtract(start.get().index());
+        return Optional.of(consumed.multiply(SECONDS_PER_HOUR).divide(BigDecimal.valueOf(seconds), MathContext.DECIMAL64));
     }
 }
