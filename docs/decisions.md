@@ -304,3 +304,33 @@ one before the gap, so the whole gap's consumption was read as the last hour (up
 within two reading intervals of both ends of the hour (the last hour and each reference hour). An hour
 without data around it is not judged; a reference day without data is not counted as a sample. Missing
 data is A3's job, not A2's.
+
+## D32 - Map and dashboard endpoints
+
+The three D12 extensions are served by `DashboardController`, open to every role (technicians see the
+whole map and the network figures, only their alerts are restricted).
+- **One definition of "silent".** The map status SILENT and the `silentMeters` figure use the same test and
+  setting as rule A3 (`SilentMeterRule.isSilent`, A3 multiple), computed at request time: the map is right
+  even between two runs of the A3 check, and agrees with the alert as soon as it is raised. SILENT wins over
+  ALERT on the map (a meter that stopped reporting is the first thing to check).
+- **Network consumption = sum of the meter curves.** One SQL query (time_bucket per meter and bucket, `lag`
+  over the meter's buckets) applies exactly the rules of the per-meter consumption: difference with the
+  previous reference, last reading before the period for the first bucket, never negative. An integration
+  test checks that the network curve equals the sum of the per-meter endpoints, with a gap and a decrease.
+- **All meters count in the curve**, inactive ones included: a meter taken out of service keeps its past
+  consumption in the network history. The map and the counters only show active meters.
+- **"Consumption today"** is the network consumption since local midnight (UTC+1), kWh and m³ apart.
+- Measured on the demo stack (50 meters): the 24-hour curve answers in about 0.13 s. The load test with
+  1000 meters (Phase 6) will tell whether TimescaleDB continuous aggregates are needed.
+
+## D33 - The frontend uses the platform calendar (UTC+1), not the browser's time zone
+
+**Problem found when wiring the frontend to the real API.** The backend groups days and months on a fixed
+UTC+1 calendar (D21), but the frontend computed period starts and formatted dates in the browser's time
+zone. In a browser set to UTC, every day bar was labelled with the previous day; in Morocco the same shift
+would appear during Ramadan, when `Africa/Casablanca` moves to UTC+0.
+**Decision.** `shared/calendar.ts` holds the platform calendar (`Etc/GMT-1`): period starts (midnight,
+first of the month) are computed on it, and every date formatter passes `timeZone: 'Etc/GMT-1'`. Times are
+therefore shown in Moroccan legal time whatever the device; the mock API uses the same calendar. Unit tests
+use instants where UTC and UTC+1 fall on different days, so they fail if a browser-local computation
+comes back.

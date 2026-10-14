@@ -16,10 +16,10 @@ The coverage report is written to `backend/target/site/jacoco/index.html`.
 cd simulator
 ./mvnw verify               # 35 tests
 cd ../frontend
-npx ng test --watch=false   # Vitest, 63 tests
+npx ng test --watch=false   # Vitest, 68 tests
 ```
 
-Latest run (2026-10-14): backend 156 unit + 41 integration tests, simulator 35, frontend 63, all passing.
+Latest run (2026-10-14, Phase 5): backend 164 unit + 44 integration tests, simulator 35, frontend 68, all passing.
 JaCoCo: `anomaly` package at 89 % line coverage; the build fails below 70 % (`check-anomaly-coverage`).
 End-to-end check: with `docker compose up`, all 50 seeded meters published a reading within the first
 minute, payloads match the contract, and indexes increase between two readings.
@@ -36,6 +36,12 @@ technicians; wrong password gives the French ProblemDetail; Swagger UI and healt
 simulator signs in with its technical account and readings keep flowing. Restarting the simulator after
 a day off then raised 48 false A2 spikes (the gap counted as one hour), all auto-resolved by the next
 readings: fixed by D31 and covered by `SpikeRuleTest`.
+Phase 5 (frontend on the real API, `ng serve` against the compose stack): every screen checked for each role.
+Operator: dashboard figures and network curve, alert list, assignment to a technician (PATCH 200), meter
+list and detail (consumption, alert history). Technician: no meter list nor administration, only the
+alert assigned to them, take-charge allowed. Admin: users and rule settings loaded from the database. No
+console error. Two problems found and fixed: day bars labelled one day early in a browser set to UTC (D33),
+and 37 of the 50 demo meters with the same client name (seeded `java.util.Random`).
 
 ## Current inventory
 
@@ -73,3 +79,15 @@ readings: fixed by D31 and covered by `SpikeRuleTest`.
 | 4 | `UserApiIT` | Integration (TimescaleDB) | User CRUD, assignment, technician sees only their alerts, admin cannot PATCH an alert, deleting a technician unassigns their alerts |
 | 4 | `DevProfileIT` | Integration (TimescaleDB, dev profile) | Demo accounts, simulator account, meters and rules seeded and usable (added after a binding error broke only the dev profile) |
 | 4 | `MeterRegistryClientTest` (extended) | Simulator unit | Signs in then sends the bearer token; stops with a clear message when the password is refused |
+| 5 | `meter-rules.spec` | Frontend unit | Silent meter at 3 x interval (boundary), health priority, voltage range 207 / 253 V boundaries, signal quality |
+| 5 | `alert-rules.spec` | Frontend unit | Status changes allowed per role (operator, own technician alerts, admin read-only) |
+| 5 | `meter-form.dialog.spec` | Frontend unit | Serial format, serial prefix must match the energy type |
+| 5 | `auth.guards.spec` | Frontend unit | Redirect to login with return URL, role restrictions on routes |
+| 5 | `interceptors.spec` | Frontend unit | JWT added to API calls only, removed after logout; RFC 7807 messages |
+| 5 | `mock-backend.spec` | Frontend unit | Mock API honours the contract: 401 / 403 (technician cannot create a meter), technicians see only their alerts, one open alert per (meter, rule), no negative consumption across gaps |
+| 5 | `format.spec`, `app.spec` | Frontend unit | French number / relative-time formatting, root component |
+| 5 | `DashboardServiceTest` | Unit (Mockito) | Map status SILENT before ALERT before OK; silence follows A3 (exactly 3 intervals tolerated) and its configured multiple; every severity counted (0 when none); no consumption query at local midnight |
+| 5 | `DashboardApiIT` | Integration (TimescaleDB) | Network curve with a gap, a decrease, a meter without earlier reading and an inactive meter: equals the sum of the per-meter curves; 400 on invalid step / period; stats and map for a technician (active / silent counts, open alerts per severity, consumption today, statuses, positions) |
+| 5 | `SecurityRulesTest` (extended) | Web slice | Map, stats and trend open to the three roles, 401 without token |
+| 5 | `FesMeterGeneratorTest` (extended) | Unit | Client names and streets vary between meters (regression) |
+| 5 | `calendar.spec` | Frontend unit | Periods start at Moroccan midnight / first of the month across years; bucket labels and dates shown on UTC+1 whatever the browser time zone (D33) |

@@ -6,8 +6,9 @@ anomalies (fault, fraud, abnormal consumption) and shows everything on a web das
 
 Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
 
-> Status: **Phases 0 to 3 done** (meters, simulator, MQTT ingestion, consumption, anomaly detection A1-A5,
-> alerts and e-mails); frontend built ahead of the backend, on a simulated API. See [Roadmap](#roadmap).
+> Status: **Phases 0 to 5 done** (meters, simulator, MQTT ingestion, consumption, anomaly detection A1-A5,
+> alerts and e-mails, JWT security, Angular frontend on the real API). Phase 6 (load test, Docker image of
+> the frontend, final documentation) remains. See [Roadmap](#roadmap).
 
 ## Tech stack
 
@@ -47,6 +48,7 @@ The simulator signs in with the technical account `simulateur` (`SIMULATOR_PASSW
 
 | Address | Service |
 |---|---|
+| <http://localhost:4200> | Web interface, started with `npm start` in `frontend/` (see below; Docker image in Phase 6) |
 | <http://localhost:8080/swagger-ui.html> | API documentation (Swagger UI) |
 | <http://localhost:8080/actuator/health> | Backend health |
 | <http://localhost:8025> | Mailpit (e-mails sent by the platform) |
@@ -93,11 +95,12 @@ Frontend (Node 24):
 ```sh
 cd frontend
 npm install
-npm start        # http://localhost:4200, demo accounts admin / operateur / technicien, password demo1234
+npm start        # http://localhost:4200, proxies /api to the backend on :8080
 ```
 
-The frontend currently runs on a simulated API in the browser (`useMockApi` in
-`frontend/src/environments/environment.ts`); see [frontend/README.md](frontend/README.md).
+Sign in with a demo account (see *Sign in* above). The frontend can also run without the backend on a
+simulated API in the browser (`useMockApi` in `frontend/src/environments/environment.ts`); see
+[frontend/README.md](frontend/README.md).
 
 ## Repository layout
 
@@ -123,5 +126,5 @@ docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
 - [x] Phase 2 - MQTT ingestion and consumption
 - [x] Phase 3 - Anomaly detection and alerts
 - [x] Phase 4 - Security (JWT, roles)
-- [ ] Phase 5 - Angular frontend: all pages built on the simulated API; wiring to the real API remains
+- [x] Phase 5 - Angular frontend on the real API (dashboard, map, meters, alerts, administration)
 - [ ] Phase 6 - Performance, documentation, finalisation

@@ -16,23 +16,23 @@ npm test -- --watch=false
 npm run build        # production build in dist/frontend
 ```
 
-## Simulated API
+## Backend API
 
-Until the backend phases are done, `src/environments/environment.ts` has `useMockApi: true`: an HTTP
-interceptor (`src/app/core/mock`) answers every `/api` call in the browser with simulated data that follows
-the REST contract of the specification (see `docs/decisions.md`, D12 and D13). A "Données simulées" badge
-is shown in the top bar.
+`ng serve` proxies `/api` to the Spring Boot backend on http://localhost:8080 (`proxy.conf.json`). Start it
+with `docker compose up` from the repository root (or the backend alone, see the root README), then sign
+in with a demo account of the `dev` profile: `admin`, `operateur`, `technicien` or `technicien2`, password
+`APP_SEED_DEMO_PASSWORD` from `.env`.
 
-Demo accounts (password `demo1234`, mock mode only):
+Dates are shown and periods computed on the platform calendar, a fixed UTC+1 like the backend, whatever
+the browser's time zone (`src/app/shared/calendar.ts`, `docs/decisions.md` D33).
 
-| Account | Role |
-|---|---|
-| `admin` | Administrateur |
-| `operateur` | Opérateur |
-| `technicien` | Technicien (Hamza Tazi) |
+## Simulated API (optional)
 
-With `useMockApi: false`, `ng serve` proxies `/api` to the Spring Boot backend on http://localhost:8080
-(`proxy.conf.json`).
+With `useMockApi: true` in `src/environments/environment.ts`, an HTTP interceptor (`src/app/core/mock`)
+answers every `/api` call in the browser with simulated data that follows the same REST contract
+(`docs/decisions.md`, D12 and D13), so the screens can be worked on without Docker. A "Données simulées"
+badge is shown in the top bar and the login page offers the demo accounts (password `demo1234`). The unit
+tests keep the mock aligned with the contract.
 
 The session token is kept in memory only: reloading the page signs you out (`docs/decisions.md`, D16).
 
