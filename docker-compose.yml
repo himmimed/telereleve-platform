@@ -75,6 +75,9 @@ services:
       MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in .env (see .env.example)}
       MAIL_HOST: mailpit
       MAIL_SMTP_PORT: 1025
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+      APP_SEED_DEMO_PASSWORD: ${APP_SEED_DEMO_PASSWORD:-}
+      SIMULATOR_PASSWORD: ${SIMULATOR_PASSWORD:?Set SIMULATOR_PASSWORD in .env (see .env.example)}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
@@ -97,6 +100,8 @@ services:
       MQTT_USERNAME: ${MQTT_USERNAME:-telereleve}
       MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in .env (see .env.example)}
       BACKEND_URL: http://backend:8080
+      SIM_BACKEND_USERNAME: simulateur
+      SIM_BACKEND_PASSWORD: ${SIMULATOR_PASSWORD:?Set SIMULATOR_PASSWORD in .env (see .env.example)}
       SIM_INTERVAL_SECONDS: ${SIM_INTERVAL_SECONDS:-60}
       SIM_MAX_METERS: ${SIM_MAX_METERS:-0}
       # Demo scenario: 4 days of history, and one meter per anomaly type, started 25 h ago.
