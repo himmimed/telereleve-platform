@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith, switchMap, timer } from 'rxjs';
@@ -32,14 +33,9 @@ const NAV: NavItem[] = [
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
-  host: {
-    '[class.rail]': 'layout() === "rail"',
-    '[class.mobile]': 'layout() === "mobile"',
-    '[class.drawer-open]': 'drawerOpen()',
-  },
 })
 export class Shell {
   protected readonly auth = inject(AuthStore);
@@ -47,18 +43,14 @@ export class Shell {
   protected readonly mockMode = environment.useMockApi;
   private readonly dashboardApi = inject(DashboardApi);
 
-  /** full sidebar on desktop, icon rail on tablet, drawer on phone. */
-  protected readonly layout = toSignal(
+  /** Below 1024 px the navigation links fold into a sheet under the top bar. */
+  protected readonly compact = toSignal(
     inject(BreakpointObserver)
-      .observe(['(min-width: 1200px)', '(min-width: 768px)'])
-      .pipe(
-        map((state) =>
-          state.breakpoints['(min-width: 1200px)'] ? 'full' : state.breakpoints['(min-width: 768px)'] ? 'rail' : 'mobile',
-        ),
-      ),
-    { initialValue: 'full' },
+      .observe('(max-width: 1023.98px)')
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
   );
-  protected readonly drawerOpen = signal(false);
+  protected readonly menuOpen = signal(false);
 
   protected readonly nav = computed(() => NAV.filter((item) => this.auth.hasAnyRole(item.roles)));
   protected readonly roleLabel = computed(() => {
@@ -76,7 +68,7 @@ export class Shell {
       .toUpperCase(),
   );
 
-  /** Open alerts in the sidebar, refreshed every minute (technicians see their own list instead). */
+  /** Open alerts next to the Alertes link, refreshed every minute (technicians see their own list instead). */
   protected readonly openAlerts = toSignal(
     timer(0, 60_000).pipe(
       filter(() => this.auth.role() !== 'TECHNICIAN'),
@@ -87,14 +79,14 @@ export class Shell {
   );
 
   constructor() {
-    // Close the phone drawer after navigating.
+    // Close the narrow-screen menu after navigating.
     inject(Router)
       .events.pipe(
         filter((event) => event instanceof NavigationEnd),
         startWith(null),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.drawerOpen.set(false));
+      .subscribe(() => this.menuOpen.set(false));
   }
 
   protected logout(): void {
