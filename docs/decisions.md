@@ -400,3 +400,35 @@ the dashboard is complete 0.8 s after the sign-in click. Integration tests check
 - the summary after out-of-order and duplicate readings;
 - a period ending within an hour;
 - that the network curve still equals the sum of the per-meter curves.
+
+## D37 - Interface in the CEAC brand language
+
+**Request.** Give the console a distinctive, professional look, in the identity of the CEAC website
+(ceacmaroc.com), with purposeful dashboard animation and none of the generic "AI" look.
+**Brand tokens taken from the website's own CSS:**
+- colours: blue `#0a5da8`, deep blue `#084777`, navy `#082b4d`, ink `#102d43`, one lime accent `#93bd32`,
+  paper `#f6f9fa`, lines `#d4e0e5`;
+- type: Geist for the interface (already used), the classical serif of the site (Iowan Old Style, then
+  Palatino) for one statement line per screen at most;
+- shapes: 6px buttons, a soft navy-tinted shadow;
+- the zellige motif.
+The Material 3 palettes are regenerated from these colours; dark mode keeps the same hues on deep navy
+rather than grey.
+**Composition:**
+- a top navigation like the website, with a lime diamond under the current page, instead of a generic
+  sidebar;
+- on the dashboard, a greeting, then the key figures as the website's figures strip: large blue numbers
+  between hairlines, no cards.
+**Motion, each with a reason:**
+- content rises in reading order on arrival;
+- figures count from their previous value when they change;
+- a lime line fills over the 30 s before the next refresh;
+- chart values grow from the baseline only on first display;
+- the fleet bar's segments grow one after the other;
+- links and rows react to the pointer.
+Everything is transform / opacity and stops under `prefers-reduced-motion`.
+**Assets.** Nothing is downloaded from the website. The zellige is a single geometric tile drawn in CSS
+(eight-pointed stars), and the logo is replaced by a text wordmark. The official logo and zellige image
+can replace them if CEAC provides the files.
+**Unchanged:** routes, menu labels, screens and behaviour; the status and severity colours, validated for
+colour-vision deficiency (D11).
