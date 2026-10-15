@@ -45,9 +45,9 @@
       @if (data(); as d) {
         <span class="kpi-value num">{{ openAlertTotal() | num: 0 }}</span>
         <span class="severity-split">
-          <span class="sev sev-critical"><b class="num">{{ d.stats.openAlerts.CRITICAL }}</b> critiques</span>
-          <span class="sev sev-high"><b class="num">{{ d.stats.openAlerts.HIGH }}</b> hautes</span>
-          <span class="sev sev-medium"><b class="num">{{ d.stats.openAlerts.MEDIUM }}</b> moyennes</span>
+          <span class="sev sev-critical"><b class="num">{{ d.stats.openAlerts.CRITICAL }}</b> {{ d.stats.openAlerts.CRITICAL > 1 ? 'critiques' : 'critique' }}</span>
+          <span class="sev sev-high"><b class="num">{{ d.stats.openAlerts.HIGH }}</b> {{ d.stats.openAlerts.HIGH > 1 ? 'hautes' : 'haute' }}</span>
+          <span class="sev sev-medium"><b class="num">{{ d.stats.openAlerts.MEDIUM }}</b> {{ d.stats.openAlerts.MEDIUM > 1 ? 'moyennes' : 'moyenne' }}</span>
         </span>
       } @else {
         <app-skeleton height="34px" width="56px" />
