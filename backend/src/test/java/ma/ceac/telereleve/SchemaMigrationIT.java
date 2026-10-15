@@ -44,12 +44,20 @@ class SchemaMigrationIT {
     }
 
     @Test
-    void readingTableIsATimescaleHypertable() {
-        Integer count = jdbc.queryForObject(
-                "SELECT count(*) FROM timescaledb_information.hypertables WHERE hypertable_name = 'reading'",
-                Integer.class);
+    void flywayAppliesV2Successfully() {
+        Boolean success = jdbc.queryForObject(
+                "SELECT success FROM flyway_schema_history WHERE version = '2'", Boolean.class);
 
-        assertThat(count).isEqualTo(1);
+        assertThat(success).isTrue();
+    }
+
+    @Test
+    void readingTablesAreTimescaleHypertables() {
+        Integer count = jdbc.queryForObject("""
+                SELECT count(*) FROM timescaledb_information.hypertables
+                WHERE hypertable_name IN ('reading', 'reading_hourly')""", Integer.class);
+
+        assertThat(count).isEqualTo(2);
     }
 
     @Test

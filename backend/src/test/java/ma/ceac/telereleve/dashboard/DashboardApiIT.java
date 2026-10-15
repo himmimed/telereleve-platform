@@ -118,6 +118,46 @@ class DashboardApiIT {
     }
 
     @Test
+    void networkConsumptionHandlesLateReadingsAndAPeriodEndingWithinAnHour() {
+        // Hour 10: 10:10 -> 100, 10:50 -> 104, then 10:05 -> 99 arrives late (replayed after an outage) and
+        // becomes the first reading of the hour. Hour 11: 11:20 -> 106, and 11:45 -> 110 after the period.
+        Meter meter = meter("CEAC-E-000021", MeterType.ELECTRICITY, MeterStatus.ACTIVE);
+        insert(meter, "2026-10-12T10:10:00Z", "100");
+        insert(meter, "2026-10-12T10:50:00Z", "104");
+        insert(meter, "2026-10-12T11:20:00Z", "106");
+        insert(meter, "2026-10-12T11:45:00Z", "110");
+        insert(meter, "2026-10-12T10:05:00Z", "99");
+
+        assertThat(jdbc.queryForMap("""
+                SELECT first_at, first_index, last_at, last_index FROM reading_hourly
+                WHERE meter_id = ? AND hour = '2026-10-12T10:00:00Z'""", meter.getId()))
+                .containsEntry("first_index", new BigDecimal("99.000"))
+                .containsEntry("last_index", new BigDecimal("104.000"));
+
+        String period = "from=2026-10-12T10:00:00Z&to=2026-10-12T11:30:00Z&step=hour";
+        JsonNode trend = http.json("/api/dashboard/consumption-trend?" + period);
+        // Hour 10: 104 - 99 (first reading, nothing before). Hour 11 up to 11:30: 106 - 104, not 110.
+        assertThat(values(trend, "electricityKwh")).usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("5"), new BigDecimal("2"));
+        assertThat(values(http.json("/api/meters/" + meter.getId() + "/consumption?" + period).get("points"), "value"))
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("5"), new BigDecimal("2"));
+    }
+
+    @Test
+    void aDuplicateReadingChangesNeitherTheReadingsNorTheHourlySummary() {
+        Meter meter = meter("CEAC-E-000022", MeterType.ELECTRICITY, MeterStatus.ACTIVE);
+        insert(meter, "2026-10-12T10:10:00Z", "100");
+
+        boolean stored = readings.insertIfAbsent(new StoredReading(meter.getId(), Instant.parse("2026-10-12T10:10:00Z"),
+                new BigDecimal("999"), null, -70));
+
+        assertThat(stored).isFalse();
+        assertThat(jdbc.queryForObject("SELECT last_index FROM reading_hourly WHERE meter_id = ?", BigDecimal.class,
+                meter.getId())).isEqualByComparingTo("100");
+    }
+
+    @Test
     void trendRejectsInvalidPeriods() {
         assertThat(http.getForEntity("/api/dashboard/consumption-trend?step=week", JsonNode.class).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);

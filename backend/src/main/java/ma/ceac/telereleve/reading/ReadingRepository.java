@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +35,32 @@ public class ReadingRepository {
 
     /** @return true if the reading was stored, false if (meter, timestamp) already existed */
     public boolean insertIfAbsent(StoredReading reading) {
-        int inserted = jdbc.update("""
-                INSERT INTO reading (meter_id, read_at, index_value, voltage, signal_strength)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT (meter_id, read_at) DO NOTHING""",
+        // One statement, one round trip: the reading, and the first / last reading of its hour in
+        // reading_hourly (a late reading may become the hour's first one). A duplicate changes neither.
+        Integer inserted = jdbc.queryForObject("""
+                WITH inserted AS (
+                    INSERT INTO reading (meter_id, read_at, index_value, voltage, signal_strength)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT (meter_id, read_at) DO NOTHING
+                    RETURNING meter_id, read_at, index_value
+                ), hourly AS (
+                    INSERT INTO reading_hourly (meter_id, hour, first_at, first_index, last_at, last_index)
+                    SELECT meter_id, date_trunc('hour', read_at, 'UTC'), read_at, index_value, read_at, index_value
+                    FROM inserted
+                    ON CONFLICT (meter_id, hour) DO UPDATE SET
+                        first_at = LEAST(reading_hourly.first_at, EXCLUDED.first_at),
+                        first_index = CASE WHEN EXCLUDED.first_at < reading_hourly.first_at
+                                           THEN EXCLUDED.first_index ELSE reading_hourly.first_index END,
+                        last_at = GREATEST(reading_hourly.last_at, EXCLUDED.last_at),
+                        last_index = CASE WHEN EXCLUDED.last_at > reading_hourly.last_at
+                                          THEN EXCLUDED.last_index ELSE reading_hourly.last_index END
+                    RETURNING 1
+                )
+                SELECT count(*) FROM inserted""",
+                Integer.class,
                 reading.meterId(), Timestamp.from(reading.readAt()), reading.index(), reading.voltage(),
                 reading.signalStrength());
-        return inserted == 1;
+        return inserted != null && inserted == 1;
     }
 
     public Optional<StoredReading> findLatest(UUID meterId) {
@@ -120,23 +140,40 @@ public class ReadingRepository {
      * meter's consumption (ConsumptionCalculator): each bucket's last index minus the previous reference
      * (last index of the meter's previous non-empty bucket, else its last reading before `from`, else
      * the bucket's first index), never negative. Empty buckets are absent.
+     * Reads the hourly summary (reading_hourly) for the whole hours, and the raw readings only for the
+     * last, unfinished hour (D36). `from` must be on the hour, as every bucket start is.
      */
     public List<FleetBucket> fleetConsumption(Instant from, Instant to, String bucketWidth, ZoneId zone) {
+        Instant wholeHoursEnd = to.truncatedTo(ChronoUnit.HOURS);
+        if (wholeHoursEnd.isBefore(from)) {
+            wholeHoursEnd = from;
+        }
+        Timestamp start = Timestamp.from(from);
+        Timestamp split = Timestamp.from(wholeHoursEnd);
         return jdbc.query("""
-                WITH buckets AS (
-                    SELECT meter_id, time_bucket(?::interval, read_at, ?) AS bucket,
-                           first(index_value, read_at) AS first_index,
-                           last(index_value, read_at) AS last_index
+                WITH hours AS (
+                    SELECT meter_id, hour, first_at, first_index, last_at, last_index
+                    FROM reading_hourly
+                    WHERE hour >= ? AND hour < ?
+                    UNION ALL
+                    SELECT meter_id, ?::timestamptz, min(read_at), first(index_value, read_at),
+                           max(read_at), last(index_value, read_at)
                     FROM reading
                     WHERE read_at >= ? AND read_at < ?
+                    GROUP BY meter_id
+                ), buckets AS (
+                    SELECT meter_id, time_bucket(?::interval, hour, ?) AS bucket,
+                           first(first_index, first_at) AS first_index,
+                           last(last_index, last_at) AS last_index
+                    FROM hours
                     GROUP BY meter_id, bucket
                 ), consumed AS (
                     SELECT b.meter_id, b.bucket,
                            GREATEST(b.last_index - COALESCE(
                                lag(b.last_index) OVER (PARTITION BY b.meter_id ORDER BY b.bucket),
-                               (SELECT r.index_value FROM reading r
-                                WHERE r.meter_id = b.meter_id AND r.read_at < ?
-                                ORDER BY r.read_at DESC LIMIT 1),
+                               (SELECT h.last_index FROM reading_hourly h
+                                WHERE h.meter_id = b.meter_id AND h.hour < ?
+                                ORDER BY h.hour DESC LIMIT 1),
                                b.first_index), 0) AS value
                     FROM buckets b
                 )
@@ -146,7 +183,7 @@ public class ReadingRepository {
                 ORDER BY c.bucket""",
                 (rs, n) -> new FleetBucket(rs.getTimestamp("bucket").toInstant(),
                         MeterType.valueOf(rs.getString("type")), rs.getBigDecimal("value")),
-                bucketWidth, zone.getId(), Timestamp.from(from), Timestamp.from(to), Timestamp.from(from));
+                start, split, split, split, Timestamp.from(to), bucketWidth, zone.getId(), start);
     }
 
     /** Readings in [from, to), oldest first, streamed row by row (CSV export of long periods). */
