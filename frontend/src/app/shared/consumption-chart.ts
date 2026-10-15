@@ -4,20 +4,19 @@ import {
   BarElement,
   CategoryScale,
   ChartConfiguration,
+  ChartTypeRegistry,
   Filler,
   LineController,
   LineElement,
   LinearScale,
   PointElement,
+  ScriptableContext,
   Tooltip,
 } from 'chart.js';
 import { BaseChartDirective, provideCharts } from 'ng2-charts';
 import { ThemeService, resolveColor } from '../core/theme.service';
 import { formatNumber } from './format';
-
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+import { prefersReducedMotion } from './motion';
 
 export interface ChartPoint {
   /** Short axis label ("14 h", "lun. 6"). */
@@ -88,7 +87,20 @@ export class ConsumptionChart {
     const kind = this.kind();
 
     const accent = resolveColor('var(--mat-sys-primary)', this.host);
-    const accentSoft = resolveColor('color-mix(in srgb, var(--mat-sys-primary) 14%, transparent)', this.host);
+    const accentDeep = resolveColor('var(--ceac-blue-deep)', this.host);
+    // Area under the line: brand blue fading to nothing, so the curve reads first and the fill second.
+    const fillTop = resolveColor('color-mix(in srgb, var(--mat-sys-primary) 24%, transparent)', this.host);
+    const fillBottom = resolveColor('color-mix(in srgb, var(--mat-sys-primary) 0%, transparent)', this.host);
+    const areaFill = (context: ScriptableContext<'line'>) => {
+      const { ctx, chartArea } = context.chart;
+      if (!chartArea) {
+        return fillTop;
+      }
+      const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+      gradient.addColorStop(0, fillTop);
+      gradient.addColorStop(1, fillBottom);
+      return gradient;
+    };
     const muted = resolveColor('var(--app-muted)', this.host);
     const grid = resolveColor('var(--app-hairline)', this.host);
     const tooltipBg = resolveColor('var(--mat-sys-inverse-surface)', this.host);
@@ -102,7 +114,7 @@ export class ConsumptionChart {
               type: 'bar',
               data: points.map((p) => p.value),
               backgroundColor: accent,
-              hoverBackgroundColor: accent,
+              hoverBackgroundColor: accentDeep,
               borderRadius: { topLeft: 4, topRight: 4 },
               borderSkipped: 'start',
               maxBarThickness: 28,
@@ -113,7 +125,7 @@ export class ConsumptionChart {
               type: 'line',
               data: points.map((p) => p.value),
               borderColor: accent,
-              backgroundColor: accentSoft,
+              backgroundColor: areaFill,
               borderWidth: 2,
               fill: 'origin',
               tension: 0.3,
@@ -129,7 +141,11 @@ export class ConsumptionChart {
     const options: ChartConfiguration['options'] = {
       responsive: true,
       maintainAspectRatio: false,
-      animation: prefersReducedMotion() ? false : { duration: 400 },
+      // First arrival: values grow from the baseline. Later refreshes only move what changed.
+      animation: prefersReducedMotion() ? false : { duration: 900, easing: 'easeOutQuart' },
+      animations: prefersReducedMotion()
+        ? {}
+        : { y: { from: (ctx: ScriptableContext<keyof ChartTypeRegistry>) => ctx.chart.scales['y'].getPixelForValue(0) } },
       interaction: { mode: 'index', intersect: false },
       layout: { padding: { top: 8 } },
       plugins: {
@@ -139,7 +155,7 @@ export class ConsumptionChart {
           titleColor: tooltipText,
           bodyColor: tooltipText,
           padding: 10,
-          cornerRadius: 8,
+          cornerRadius: 6,
           displayColors: false,
           titleFont: { family: 'Geist Variable', weight: 500 },
           bodyFont: { family: 'Geist Variable' },
@@ -162,7 +178,7 @@ export class ConsumptionChart {
         },
         y: {
           beginAtZero: true,
-          border: { display: false },
+          border: { display: false, dash: [3, 5] },
           grid: { color: grid },
           ticks: {
             color: muted,

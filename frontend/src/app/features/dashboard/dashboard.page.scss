@@ -1,64 +1,122 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
-app-page-header {
-  margin-bottom: 4px;
-}
-
-// Key figures: one panel split by hairlines rather than four floating cards.
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.kpi {
+// Greeting and data freshness.
+.hello {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 18px 22px 20px;
-  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+}
 
-  & + .kpi {
-    border-left: 1px solid var(--app-hairline);
+.hello-date {
+  margin-bottom: 4px;
+  color: var(--app-muted);
+  font-weight: 500;
+}
+
+.hello h1 {
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.sync {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+// Lime line drawn across the 30 s before the next refresh. No background track: only progress shows.
+.sync-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ceac-lime-bright);
+  transform-origin: left center;
+  animation: refresh-cycle 30s linear both;
+}
+
+@keyframes refresh-cycle {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
   }
 }
 
-.kpi-label {
-  color: var(--app-muted);
-  font: var(--mat-sys-label-large);
+// Key figures: the figures strip of the CEAC website. Large blue numbers on the page itself, separated by
+// hairlines, no card around them.
+.figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--app-hairline);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
-.kpi-value {
-  font-size: 32px;
-  font-weight: 550;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 24px 24px;
+  min-width: 0;
+
+  & + .figure {
+    border-left: 1px solid var(--app-hairline);
+  }
+
+  &:first-child {
+    padding-left: 0;
+  }
+}
+
+.figure-value {
+  font-size: clamp(2.25rem, 3.4vw, 3rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--ceac-blue);
 
   small {
     margin-left: 6px;
-    font-size: 15px;
+    font-size: 1rem;
     font-weight: 500;
     letter-spacing: 0;
     color: var(--app-muted);
   }
 
   &.tone-silent {
-    color: color-mix(in srgb, var(--status-silent) 75%, var(--mat-sys-on-surface));
+    color: color-mix(in srgb, var(--status-silent) 80%, var(--ceac-ink));
   }
 }
 
-.kpi-sub {
-  font-size: 13px;
+.figure-label {
+  margin-top: 4px;
+  font-weight: 600;
+  color: var(--ceac-ink);
+}
+
+.figure-note {
+  font-size: 0.82rem;
+  color: var(--app-muted);
 }
 
 .severity-split {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
-  font-size: 13px;
+  font-size: 0.82rem;
   color: var(--app-muted);
 
   b {
@@ -78,10 +136,11 @@ app-page-header {
   color: var(--sev-medium);
 }
 
+// Chart and alerts side by side; the chart gets the larger share.
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -91,16 +150,27 @@ app-page-header {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.panel-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ceac-ink);
 }
 
 .panel-sub {
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 0.85rem;
+
+  strong {
+    color: var(--ceac-ink);
+    font-weight: 600;
+  }
 }
 
 .trend {
-  padding: 18px 20px 16px;
+  padding: 22px 24px 18px;
 }
 
 .toggles {
@@ -109,12 +179,37 @@ app-page-header {
   flex-wrap: wrap;
 }
 
+// "Tout voir ↗": a text link with the website's arrow, which moves on hover.
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: var(--radius-control);
+  color: var(--ceac-blue);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+
+  .mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    transition: transform 240ms var(--ease-out);
+  }
+
+  &:hover .mat-icon {
+    transform: translate(2px, -2px);
+  }
+}
+
 .alerts {
-  padding: 18px 12px 10px 20px;
+  padding: 22px 14px 12px 24px;
 
   .panel-head {
     align-items: center;
-    padding-right: 4px;
+    padding-right: 6px;
     margin-bottom: 6px;
   }
 }
@@ -127,17 +222,23 @@ app-page-header {
 
 .alert-row {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
+  grid-template-columns: 92px minmax(0, 1fr) auto 16px;
   align-items: center;
   gap: 12px;
-  padding: 10px 8px 10px 0;
+  padding: 11px 8px 11px 0;
   border-radius: var(--radius-control);
   color: inherit;
   text-decoration: none;
-  transition: background-color 120ms var(--ease-out);
+  transition: background-color 200ms var(--ease-out), transform 240ms var(--ease-out);
 
   &:hover {
-    background: color-mix(in srgb, var(--mat-sys-primary) 5%, transparent);
+    background: color-mix(in srgb, var(--ceac-blue) 5%, transparent);
+    transform: translateX(2px);
+  }
+
+  &:hover .alert-go {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -154,6 +255,7 @@ li + li .alert-row {
 
 .alert-rule {
   font-weight: 550;
+  color: var(--ceac-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -163,12 +265,23 @@ li + li .alert-row {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 0.8rem;
 }
 
 .alert-time {
-  font-size: 12.5px;
+  font-size: 0.8rem;
   white-space: nowrap;
+}
+
+.alert-go {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  color: var(--ceac-blue);
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition: opacity 200ms var(--ease-out), transform 240ms var(--ease-out);
 }
 
 .alert-skeletons {
@@ -179,34 +292,44 @@ li + li .alert-row {
 }
 
 .fleet {
-  padding: 16px 20px 18px;
+  padding: 20px 24px 22px;
 }
 
 .fleet-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-// Proportional bar without a background track; 2px gaps between segments.
+// Proportional bar without a background track; segments grow in from the left, one after another.
 .fleet-bar {
   display: flex;
-  gap: 2px;
-  height: 10px;
+  gap: 3px;
+  height: 12px;
 }
 
 .segment {
   flex-basis: 0;
   min-width: 6px;
   border-radius: 3px;
+  transform-origin: left center;
+  animation: grow-x 900ms var(--ease-out) both;
+  animation-delay: calc(300ms + var(--i, 0) * 120ms);
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
 }
 
 .fleet-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 28px;
-  margin: 14px 0 0;
+  gap: 8px 32px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 
@@ -218,13 +341,14 @@ li + li .alert-row {
 
   strong {
     font-weight: 600;
+    color: var(--ceac-ink);
   }
 }
 
 .swatch {
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .s-OK {
@@ -239,6 +363,12 @@ li + li .alert-row {
   background: var(--status-silent);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .sync-line {
+    display: none;
+  }
+}
+
 @media (max-width: 1199px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
@@ -246,25 +376,30 @@ li + li .alert-row {
 }
 
 @media (max-width: 900px) {
-  .kpis {
+  .figures {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .kpi:nth-child(3) {
+  .figure:nth-child(3) {
     border-left: none;
+    padding-left: 0;
   }
 
-  .kpi:nth-child(n + 3) {
+  .figure:nth-child(n + 3) {
     border-top: 1px solid var(--app-hairline);
   }
 }
 
 @media (max-width: 520px) {
-  .kpis {
+  .figures {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .kpi + .kpi {
+  .figure {
+    padding-left: 0;
+  }
+
+  .figure + .figure {
     border-left: none;
     border-top: 1px solid var(--app-hairline);
   }

@@ -25,7 +25,8 @@ import { Alert, DashboardStats, MapMarker, MapStatus, MeterType, Severity, Trend
 import { PLATFORM_TIME_ZONE, periodRange } from '../../shared/calendar';
 import { ChartPoint, ConsumptionChart } from '../../shared/consumption-chart';
 import { NumberPipe, RelativeTimePipe, bucketLabels } from '../../shared/format';
-import { EmptyState, MeterTypeLabel, PageHeader, SeverityBadge, Skeleton } from '../../shared/ui';
+import { CountUp } from '../../shared/count-up';
+import { EmptyState, MeterTypeLabel, SeverityBadge, Skeleton } from '../../shared/ui';
 
 type TrendPeriod = '24h' | '7d';
 
@@ -49,12 +50,12 @@ const SEVERITY_ORDER: Record<Severity, number> = { CRITICAL: 0, HIGH: 1, MEDIUM:
     MatButtonToggleModule,
     MatIconModule,
     MatTooltipModule,
-    PageHeader,
     Skeleton,
     EmptyState,
     SeverityBadge,
     MeterTypeLabel,
     ConsumptionChart,
+    CountUp,
     NumberPipe,
     RelativeTimePipe,
   ],
@@ -88,12 +89,27 @@ export class DashboardPage {
     ),
   );
 
-  protected readonly updatedLabel = computed(() => {
+  /** Greeting on the platform's clock (UTC+1): "Bonsoir" from 18:00. */
+  protected readonly greeting = Number(
+    new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: PLATFORM_TIME_ZONE }).format(new Date()),
+  ) >= 18
+    ? 'Bonsoir'
+    : 'Bonjour';
+  protected readonly todayLabel = capitalise(
+    new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: PLATFORM_TIME_ZONE }).format(
+      new Date(),
+    ),
+  );
+  protected readonly firstName = computed(() => this.auth.fullName().split(' ')[0] ?? '');
+
+  protected readonly loadedTime = computed(() => {
     const loadedAt = this.data()?.loadedAt;
     return loadedAt
-      ? `Actualisé à ${loadedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE })}, mise à jour automatique toutes les 30 s`
-      : 'Chargement des indicateurs';
+      ? loadedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE })
+      : '';
   });
+  /** Changes with every load, which restarts the refresh line. */
+  protected readonly cycleKey = computed(() => this.data()?.loadedAt.getTime() ?? 0);
 
   protected readonly openAlertTotal = computed(() => {
     const open = this.data()?.stats.openAlerts;
@@ -163,4 +179,8 @@ export class DashboardPage {
       }),
     );
   }
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
