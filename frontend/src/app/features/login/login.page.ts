@@ -25,7 +25,7 @@ import { ROLE_LABEL } from '../../core/labels';
 import { DEMO_ACCOUNTS } from '../../core/mock/mock-db';
 import { ProblemDetail } from '../../core/models';
 import { ThemeService } from '../../core/theme.service';
-import { FES_CENTER, baseLayer } from '../../shared/map-tiles';
+import { FES_CENTER, baseLayer, loadLeaflet } from '../../shared/map-tiles';
 
 @Component({
   selector: 'app-login-page',
@@ -68,7 +68,7 @@ export class LoginPage {
   constructor() {
     // Background map of Fès: Leaflet is loaded lazily, after the form is on screen.
     afterNextRender(async () => {
-      const L = await import('leaflet');
+      const L = await loadLeaflet();
       const map = L.map(this.mapElement().nativeElement, {
         center: FES_CENTER,
         zoom: 13,

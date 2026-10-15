@@ -30,7 +30,7 @@ import { ThemeService, resolveColor } from '../../core/theme.service';
 import { ChartPoint, ConsumptionChart } from '../../shared/consumption-chart';
 import { PeriodKey, periodRange } from '../../shared/calendar';
 import { DateTimePipe, NumberPipe, RelativeTimePipe, bucketLabels } from '../../shared/format';
-import { baseLayer } from '../../shared/map-tiles';
+import { baseLayer, loadLeaflet } from '../../shared/map-tiles';
 import {
   AlertStatusBadge,
   Badge,
@@ -191,7 +191,7 @@ export class MeterDetailPage {
   }
 
   private async renderMap(element: HTMLElement, meter: Meter, dark: boolean, health: string): Promise<void> {
-    const L = await import('leaflet');
+    const L = await loadLeaflet();
     const color = resolveColor(
       health === 'OK' ? 'var(--status-ok)' : health === 'ALERT' ? 'var(--status-alert)' : 'var(--status-silent)',
       this.host,

@@ -1,5 +1,20 @@
 import type * as Leaflet from 'leaflet';
 
+/**
+ * Leaflet's functions from its module object. Leaflet is a CommonJS (UMD) package: the development
+ * server exposes `map`, `tileLayer`... on the module itself, the production bundle only under `default`.
+ * Found when the Docker image showed no map while `ng serve` did (docs/decisions.md D35).
+ */
+export function leafletApi(module: object): typeof Leaflet {
+  const candidate = module as typeof Leaflet & { default?: typeof Leaflet };
+  return typeof candidate.map === 'function' ? candidate : (candidate.default as typeof Leaflet);
+}
+
+/** Loads Leaflet on demand, after the page is on screen. */
+export async function loadLeaflet(): Promise<typeof Leaflet> {
+  return leafletApi(await import('leaflet'));
+}
+
 /** Centre of Fès, where the simulated meter park is located. */
 export const FES_CENTER: [number, number] = [34.0333, -5.0];
 

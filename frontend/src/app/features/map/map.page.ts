@@ -22,7 +22,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { MAP_STATUS_LABEL } from '../../core/labels';
 import { MapMarker, MapStatus } from '../../core/models';
 import { ThemeService, resolveColor } from '../../core/theme.service';
-import { FES_CENTER, baseLayer } from '../../shared/map-tiles';
+import { FES_CENTER, baseLayer, loadLeaflet } from '../../shared/map-tiles';
 import { EmptyState, MapStatusBadge, MeterTypeLabel, PageHeader } from '../../shared/ui';
 
 type StatusFilter = MapStatus | 'ALL';
@@ -93,7 +93,7 @@ export class MapPage {
 
   constructor() {
     afterNextRender(async () => {
-      const L = await import('leaflet');
+      const L = await loadLeaflet();
       const map = L.map(this.mapElement().nativeElement, {
         center: FES_CENTER,
         zoom: 13,
