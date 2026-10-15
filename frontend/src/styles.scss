@@ -1,7 +1,9 @@
-// Global theme of the Télérelève console.
+// Global theme of the Télérelève console, in the CEAC brand language of ceacmaroc.com:
+// CEAC blue and a single lime accent on a paper background, a faint zellige motif, Geist for the
+// interface and a classical serif for the rare statement line (docs/decisions.md D37).
 // Material 3 (Angular Material) is the single design system; everything below customises its tokens.
-// Shape rule (applies everywhere): controls (buttons, inputs, toggles, menus) 8px, surfaces (panels,
-// dialogs, map) 12px, badges 6px.
+// Shape rule (applies everywhere): controls (buttons, inputs, toggles, menus) 6px like the website's
+// buttons, surfaces (panels, dialogs, map) 14px, badges 4px.
 @use '@angular/material' as mat;
 @use 'styles/theme-colors' as palette;
 
@@ -27,27 +29,36 @@ html {
   ));
 
   @include mat.button-overrides((
-    filled-container-shape: 8px,
-    outlined-container-shape: 8px,
-    text-container-shape: 8px,
-    protected-container-shape: 8px,
-    tonal-container-shape: 8px,
+    filled-container-shape: 6px,
+    outlined-container-shape: 6px,
+    text-container-shape: 6px,
+    protected-container-shape: 6px,
+    tonal-container-shape: 6px,
   ));
   @include mat.form-field-overrides((
-    outlined-container-shape: 8px,
+    outlined-container-shape: 6px,
   ));
   @include mat.button-toggle-overrides((
-    shape: 8px,
+    shape: 6px,
     height: 34px,
   ));
   @include mat.menu-overrides((
-    container-shape: 8px,
+    container-shape: 6px,
   ));
   @include mat.dialog-overrides((
-    container-shape: 12px,
+    container-shape: 14px,
   ));
   @include mat.snack-bar-overrides((
-    container-shape: 8px,
+    container-shape: 6px,
+  ));
+  // Exact brand blue for the primary role (the generated tone 40 is close but not identical).
+  @include mat.theme-overrides((
+    primary: light-dark(#0a5da8, #9ec9ff),
+    on-primary: light-dark(#ffffff, #002f57),
+    surface: light-dark(#f6f9fa, #06192b),
+    on-surface: light-dark(#102d43, #dce8f1),
+    on-surface-variant: light-dark(#526977, #9db2c1),
+    outline-variant: light-dark(#d4e0e5, #1d3a52),
   ));
   @include mat.table-overrides((
     background-color: transparent,
@@ -74,14 +85,27 @@ html[data-theme='dark'] {
 
 :root {
   --app-font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+  // The website's display face: a classical serif from the system, never downloaded.
+  --app-font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
 
-  // Surfaces: the page sits one step below the panels so panels read without heavy shadows.
-  --app-bg: light-dark(#f3f5f8, #0b1017);
-  --app-panel: light-dark(#ffffff, #121923);
-  --app-panel-raised: light-dark(#ffffff, #18212d);
-  --app-hairline: light-dark(#e2e6ed, #232d3a);
-  --app-muted: light-dark(#596270, #8e98a7);
-  --app-shadow: light-dark(rgb(15 40 60 / 0.08), rgb(0 0 0 / 0.45));
+  // CEAC brand (values from ceacmaroc.com). Dark mode keeps the same hues on a deep navy.
+  --ceac-blue: light-dark(#0a5da8, #8cbcf0);
+  --ceac-blue-deep: light-dark(#084777, #b9d6f5);
+  --ceac-navy: #082b4d;
+  --ceac-ink: light-dark(#102d43, #e2edf5);
+  --ceac-lime: light-dark(#6f9a1f, #a9d14a);
+  --ceac-lime-bright: #93bd32;
+
+  // Surfaces: paper page, white panels; in dark mode, navy steps instead of grey.
+  --app-bg: light-dark(#f6f9fa, #051526);
+  --app-panel: light-dark(#ffffff, #0a2036);
+  --app-panel-raised: light-dark(#ffffff, #0f2943);
+  --app-tint: light-dark(#edf4f3, #0d2740);
+  --app-hairline: light-dark(#d4e0e5, #183754);
+  --app-muted: light-dark(#526977, #92a9b9);
+  // Shadows carry the navy of the brand, never pure black.
+  --app-shadow: light-dark(rgb(8 43 77 / 0.1), rgb(0 8 20 / 0.55));
+  --app-shadow-soft: 0 30px 80px light-dark(rgb(8 43 77 / 0.14), rgb(0 8 20 / 0.6));
 
   // Status palette, validated for colour-vision deficiency (docs/decisions.md, D11).
   // Always paired with a text label or an icon, never colour alone.
@@ -92,11 +116,17 @@ html[data-theme='dark'] {
   --sev-high: light-dark(#c2410c, #ec7a3c);
   --sev-medium: light-dark(#a16207, #d6a72c);
 
-  --radius-control: 8px;
-  --radius-surface: 12px;
-  --radius-badge: 6px;
+  --radius-control: 6px;
+  --radius-surface: 14px;
+  --radius-badge: 4px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-enter: 640ms;
+
+  // Zellige: a lattice of eight-pointed stars (khatam), the motif of the CEAC website, drawn here as a
+  // single geometric tile.
+  --zellige-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%230a5da8' stroke-width='1'%3E%3Cpath d='M28 28h40v40H28z'/%3E%3Cpath d='M48 19.7 76.3 48 48 76.3 19.7 48z'/%3E%3Cpath d='M48 0v19.7M48 76.3V96M0 48h19.7M76.3 48H96'/%3E%3Cpath d='M0 0l28 28M96 0 68 28M0 96l28-28M96 96 68 68'/%3E%3C/g%3E%3C/svg%3E");
+  --zellige-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%238cbcf0' stroke-width='1'%3E%3Cpath d='M28 28h40v40H28z'/%3E%3Cpath d='M48 19.7 76.3 48 48 76.3 19.7 48z'/%3E%3Cpath d='M48 0v19.7M48 76.3V96M0 48h19.7M76.3 48H96'/%3E%3Cpath d='M0 0l28 28M96 0 68 28M0 96l28-28M96 96 68 68'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 *,
@@ -113,14 +143,63 @@ body {
 body {
   margin: 0;
   background: var(--app-bg);
+  text-rendering: optimizeLegibility;
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+// Zellige layer: fixed, behind everything, never repainted on scroll; it fades out towards the data so
+// it gives the page its texture without competing with figures and charts.
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--zellige-light);
+  background-size: 96px 96px;
+  opacity: 0.075;
+  mask-image: radial-gradient(120% 90% at 0% 0%, #000 0%, transparent 65%);
+}
+
+html[data-theme='dark'] body::before {
+  background-image: var(--zellige-dark);
+  opacity: 0.045;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) body::before {
+    background-image: var(--zellige-dark);
+    opacity: 0.045;
+  }
+}
+
 a {
   color: var(--mat-sys-primary);
+}
+
+// Statement line in the brand's serif (one per screen at most: login, dashboard greeting).
+.display {
+  font-family: var(--app-font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ceac-ink);
+}
+
+// Entry choreography: content rises into place in reading order, so the eye follows the hierarchy.
+// `--i` is the position in the sequence. Transform and opacity only.
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.reveal {
+  animation: rise-in var(--duration-enter) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 h1,
@@ -134,6 +213,7 @@ h1,
 h2,
 h3 {
   letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 // Quantities (indexes, kWh, counts): tabular figures so digits align in columns. Geist is used
@@ -157,6 +237,8 @@ h3 {
   background: var(--app-panel);
   border: 1px solid var(--app-hairline);
   border-radius: var(--radius-surface);
+  box-shadow: 0 1px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.03)) inset,
+    0 12px 32px -18px var(--app-shadow);
 }
 
 .panel-title {
@@ -197,6 +279,11 @@ tr.row-link {
   }
 }
 
+// Tactile feedback on every Material button: a 1px press.
+.mat-mdc-button-base:active:not([disabled]) {
+  transform: translateY(1px);
+}
+
 // Leaflet: blend map controls and popups with the theme.
 .leaflet-container {
   font: var(--mat-sys-body-small);
@@ -205,7 +292,13 @@ tr.row-link {
 
 // Muted basemap so status markers stand out; the dark variant inverts the OSM tiles.
 .map-tiles {
-  filter: saturate(0.3) brightness(1.04) contrast(0.92);
+  filter: saturate(0.25) brightness(1.04) contrast(0.9) sepia(0.08) hue-rotate(170deg);
+}
+
+// Login visual: the map in greys, tinted with the brand blue by the page (login.page.scss).
+.login-map .map-tiles,
+.login-map .map-tiles-dark {
+  filter: grayscale(1) contrast(1.15) brightness(1.08);
 }
 
 .map-tiles-dark {
