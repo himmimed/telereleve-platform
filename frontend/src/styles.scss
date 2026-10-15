@@ -123,10 +123,6 @@ html[data-theme='dark'] {
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-enter: 640ms;
 
-  // Zellige: a lattice of eight-pointed stars (khatam), the motif of the CEAC website, drawn here as a
-  // single geometric tile.
-  --zellige-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%230a5da8' stroke-width='1'%3E%3Cpath d='M28 28h40v40H28z'/%3E%3Cpath d='M48 19.7 76.3 48 48 76.3 19.7 48z'/%3E%3Cpath d='M48 0v19.7M48 76.3V96M0 48h19.7M76.3 48H96'/%3E%3Cpath d='M0 0l28 28M96 0 68 28M0 96l28-28M96 96 68 68'/%3E%3C/g%3E%3C/svg%3E");
-  --zellige-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%238cbcf0' stroke-width='1'%3E%3Cpath d='M28 28h40v40H28z'/%3E%3Cpath d='M48 19.7 76.3 48 48 76.3 19.7 48z'/%3E%3Cpath d='M48 0v19.7M48 76.3V96M0 48h19.7M76.3 48H96'/%3E%3Cpath d='M0 0l28 28M96 0 68 28M0 96l28-28M96 96 68 68'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 *,
@@ -150,29 +146,45 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-// Zellige layer: fixed, behind everything, never repainted on scroll; it fades out towards the data so
-// it gives the page its texture without competing with figures and charts.
+// Zellige layer: the official CEAC zellige (public/brand, from ceacmaroc.com), as on the website: fixed,
+// behind everything, never repainted on scroll. It fades out towards the data so it gives the page its
+// texture without competing with figures and charts.
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--zellige-light);
-  background-size: 96px 96px;
-  opacity: 0.075;
-  mask-image: radial-gradient(120% 90% at 0% 0%, #000 0%, transparent 65%);
+  background: url('/brand/zellige-ceac.webp') top left / 1100px auto repeat;
+  opacity: 0.09;
+  mask-image: radial-gradient(130% 100% at 0% 0%, #000 0%, transparent 70%);
 }
 
 html[data-theme='dark'] body::before {
-  background-image: var(--zellige-dark);
-  opacity: 0.045;
+  opacity: 0.035;
 }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme='light']) body::before {
-    background-image: var(--zellige-dark);
-    opacity: 0.045;
+    opacity: 0.035;
+  }
+}
+
+// Official CEAC logo (public/brand/logo-ceac.webp, from ceacmaroc.com). Only the blue and green block is
+// shown: the baseline under it is black on transparent and would disappear on the dark theme. The crop is
+// computed from the image (block at x 26-1828, y 14-636 of 1853 x 778), so it scales with the frame width.
+.ceac-logo {
+  display: block;
+  aspect-ratio: 1802 / 622;
+  overflow: hidden;
+  border-radius: 2px;
+
+  img {
+    display: block;
+    width: 102.83%;
+    height: auto;
+    margin-left: -1.443%;
+    margin-top: -0.777%;
   }
 }
 

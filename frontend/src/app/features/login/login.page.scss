@@ -10,20 +10,15 @@
   padding: 32px 48px;
 }
 
-// Same wordmark as the top navigation.
+// Same logo block as the top navigation.
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.brand-word {
-  font-size: 1.375rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--ceac-blue);
-  background: linear-gradient(var(--ceac-lime-bright), var(--ceac-lime-bright)) left bottom / 100% 3px no-repeat;
-  padding-bottom: 2px;
+.brand-logo {
+  width: 112px;
 }
 
 .brand-rule {

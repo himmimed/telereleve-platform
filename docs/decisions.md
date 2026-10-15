@@ -427,8 +427,10 @@ rather than grey.
 - the fleet bar's segments grow one after the other;
 - links and rows react to the pointer.
 Everything is transform / opacity and stops under `prefers-reduced-motion`.
-**Assets.** Nothing is downloaded from the website. The zellige is a single geometric tile drawn in CSS
-(eight-pointed stars), and the logo is replaced by a text wordmark. The official logo and zellige image
-can replace them if CEAC provides the files.
+**Assets.** The official CEAC logo and zellige were taken from ceacmaroc.com with the project owner's
+agreement (`frontend/public/brand/`, 73 KB and 447 KB, WebP):
+- the zellige is the background texture at the website's opacity (0.09; 0.035 in dark mode);
+- only the blue and green block of the logo is shown, cropped in CSS (`.ceac-logo`). The baseline under the
+  logo is black on transparent and would disappear on the dark theme.
 **Unchanged:** routes, menu labels, screens and behaviour; the status and severity colours, validated for
 colour-vision deficiency (D11).
