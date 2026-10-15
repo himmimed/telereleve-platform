@@ -1,17 +1,15 @@
 <section class="form-side">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true"><mat-icon fontSet="ph" fontIcon="ph-broadcast" /></span>
-    <span>
-      <strong>Télérelève</strong>
-      <small>CEAC Maroc</small>
-    </span>
+    <span class="brand-word">CEAC</span>
+    <span class="brand-rule" aria-hidden="true"></span>
+    <span class="brand-product">Télérelève</span>
   </div>
 
   <div class="form-wrap">
-    <h1>Connexion</h1>
-    <p class="muted lead">Accédez à la supervision des compteurs d’électricité et d’eau.</p>
+    <h1 class="reveal" style="--i: 0">Connexion</h1>
+    <p class="muted lead reveal" style="--i: 1">Accédez à la supervision des compteurs d’électricité et d’eau.</p>
 
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <form class="reveal" style="--i: 2" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Identifiant</mat-label>
         <input matInput formControlName="username" autocomplete="username" autocapitalize="off" spellcheck="false" />
@@ -78,9 +76,10 @@
 </section>
 
 <section class="visual-side" aria-hidden="true">
-  <div #map class="map"></div>
+  <div #map class="map login-map"></div>
+  <div class="tint"></div>
   <div class="visual-copy">
-    <h2>Relève à distance des compteurs du réseau de Fès</h2>
-    <p>Collecte automatique des index, détection des anomalies et suivi des interventions.</p>
+    <h2 class="reveal" style="--i: 3">Chaque compteur du réseau, relevé à distance.</h2>
+    <p class="reveal" style="--i: 4">Index, consommations et anomalies des compteurs d’électricité et d’eau de Fès.</p>
   </div>
 </section>

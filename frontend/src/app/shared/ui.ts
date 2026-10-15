@@ -207,13 +207,13 @@ export class EmptyState {
   selector: 'app-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="titles">
+    <div class="titles reveal">
       <h1>{{ title() }}</h1>
       @if (subtitle()) {
         <p class="muted">{{ subtitle() }}</p>
       }
     </div>
-    <div class="actions"><ng-content /></div>
+    <div class="actions reveal" style="--i: 1"><ng-content /></div>
   `,
   styles: `
     :host {
@@ -222,10 +222,16 @@ export class EmptyState {
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
-    h1 { font: var(--mat-sys-headline-small); font-weight: 600; }
-    p { margin-top: 4px; }
+    h1 {
+      font-size: clamp(1.75rem, 2.4vw, 2.125rem);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      color: var(--ceac-ink);
+    }
+    p { margin-top: 6px; }
     .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   `,
 })

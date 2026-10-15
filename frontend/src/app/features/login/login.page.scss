@@ -2,7 +2,6 @@
   display: grid;
   grid-template-columns: minmax(420px, 5fr) 7fr;
   min-height: 100dvh;
-  background: var(--app-panel);
 }
 
 .form-side {
@@ -11,31 +10,31 @@
   padding: 32px 48px;
 }
 
+// Same wordmark as the top navigation.
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  line-height: 1.15;
-
-  strong {
-    display: block;
-    font-weight: 650;
-  }
-
-  small {
-    color: var(--app-muted);
-    font-size: 12px;
-  }
+  gap: 12px;
 }
 
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-control);
-  background: var(--mat-sys-primary);
-  color: var(--mat-sys-on-primary);
+.brand-word {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ceac-blue);
+  background: linear-gradient(var(--ceac-lime-bright), var(--ceac-lime-bright)) left bottom / 100% 3px no-repeat;
+  padding-bottom: 2px;
+}
+
+.brand-rule {
+  width: 1px;
+  height: 22px;
+  background: var(--app-hairline);
+}
+
+.brand-product {
+  font-weight: 500;
+  color: var(--ceac-ink);
 }
 
 .form-wrap {
@@ -43,12 +42,13 @@
   max-width: 380px;
   margin: auto 0;
   padding: 40px 0;
-  animation: rise 500ms var(--ease-out) both;
 }
 
 h1 {
-  font: var(--mat-sys-headline-medium);
+  font-size: 2rem;
   font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--ceac-ink);
 }
 
 .lead {
@@ -86,8 +86,14 @@ mat-form-field {
 }
 
 .submit {
-  height: 44px;
-  margin-top: 4px;
+  height: 46px;
+  margin-top: 6px;
+  font-weight: 600;
+  transition: background-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 12px 28px -14px var(--ceac-blue);
+  }
 
   mat-spinner {
     margin: 0 auto;
@@ -161,12 +167,14 @@ mat-form-field {
   font-size: 12.5px;
 }
 
+// Fès, in CEAC blue: the map tiles are reduced to greys, then tinted with the brand blue; a deep navy
+// gradient carries the statement line.
 .visual-side {
   position: relative;
   overflow: hidden;
   margin: 12px 12px 12px 0;
   border-radius: var(--radius-surface);
-  background: var(--app-bg);
+  background: var(--ceac-navy);
 }
 
 .map {
@@ -174,48 +182,58 @@ mat-form-field {
   inset: 0;
 }
 
-// Keeps the headline readable over the map tiles.
-.visual-side::after {
-  content: '';
+.tint {
   position: absolute;
   inset: 0;
   z-index: 400;
   pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--app-panel) 94%, transparent) 0%,
-    color-mix(in srgb, var(--app-panel) 55%, transparent) 38%,
-    transparent 70%
-  );
+  background: #0a5da8;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+
+.visual-side::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 450;
+  pointer-events: none;
+  background: linear-gradient(to top, rgb(8 43 77 / 0.96) 0%, rgb(8 43 77 / 0.7) 34%, rgb(8 43 77 / 0) 68%);
 }
 
 .visual-copy {
   position: absolute;
-  left: 40px;
-  right: 40px;
-  bottom: 40px;
+  left: 48px;
+  right: 48px;
+  bottom: 48px;
   z-index: 500;
-  max-width: 560px;
+  max-width: 600px;
+  color: #f2f7fa;
 
   h2 {
-    font: var(--mat-sys-headline-large);
-    font-weight: 600;
-    letter-spacing: -0.025em;
+    font-family: var(--app-font-display);
+    font-size: clamp(2rem, 3vw, 2.75rem);
+    font-weight: 400;
     line-height: 1.12;
+    letter-spacing: -0.01em;
   }
 
   p {
-    margin-top: 12px;
-    color: var(--app-muted);
-    font: var(--mat-sys-body-large);
-    max-width: 48ch;
+    margin-top: 14px;
+    max-width: 46ch;
+    color: rgb(226 236 243 / 0.82);
+    font-size: 1.05rem;
+    line-height: 1.55;
   }
-}
 
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
+  // Lime stroke above the statement, the brand's second colour.
+  &::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 3px;
+    margin-bottom: 20px;
+    background: var(--ceac-lime-bright);
   }
 }
 
