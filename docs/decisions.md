@@ -334,3 +334,69 @@ first of the month) are computed on it, and every date formatter passes `timeZon
 therefore shown in Moroccan legal time whatever the device; the mock API uses the same calendar. Unit tests
 use instants where UTC and UTC+1 fall on different days, so they fail if a browser-local computation
 comes back.
+
+## D34 - Fewer database round trips per reading
+
+**Problem found in the 1000-meter load test.** Ingestion stored only about 50 readings per second. A reading
+was processed in about 20 ms, almost all of it in 23 sequential database round trips:
+- rule A2 looked up its 16 reference readings one by one;
+- each rule opened its own transaction just to learn there was no alert to resolve (or one already open);
+- the reading just stored was read back.
+Readings are processed one at a time, in order, so that each meter's readings are judged in sequence
+(A4 compares a reading with the previous one); latency therefore sets the throughput.
+**Decision.** Keep the processing sequential, cut the round trips:
+- A2 fetches its 16 instants in one query (`unnest` + `LATERAL`, one indexed lookup each on the server);
+- `JdbcReadingHistory` remembers lookups for the duration of one evaluation and knows the current reading;
+- the engine loads the open rule codes of the meter once, and calls `raise` only when no alert is open and
+  `resolve` only when one is.
+The rule settings are still read once per reading: caching them would save one query but could serve
+stale settings after a direct database change.
+**Result.** 6 round trips per reading instead of 23; see the test report for the measured throughput.
+Parallel consumers (MQTT shared subscriptions partitioned by meter) would be the next step if one
+process were not enough.
+
+## D35 - Frontend image: nginx serving the build and proxying the API
+
+The `frontend` service is a two-stage image: Node 24 builds the application (`ng build`), then nginx
+1.29 serves the static files and forwards `/api` to `backend:8080`. The browser therefore talks to one
+origin, as with `ng serve` in development (no CORS, D29), and the frontend image needs no backend URL at
+build time.
+- Hashed bundles (8-character hash, which may contain `-` and `_`) are cached for a year; `index.html` is never cached, so a new version is picked up at
+  once. Application routes (`/carte`, `/compteurs/...`) fall back to `index.html`.
+- Basic security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) and gzip.
+- Published on port 4200 (`FRONTEND_PORT`), the address given in the specification; stop the container to
+  use `ng serve` on the same port.
+- The health check calls `127.0.0.1`: in the Alpine image `localhost` resolves to IPv6 first, on which
+  nginx does not listen (found when the first container stayed "unhealthy").
+- **Leaflet in the production bundle.** Leaflet is a CommonJS (UMD) package: the development server
+  exposes `map`, `tileLayer`... on the imported module, the production bundle only under `default`. The
+  maps worked with `ng serve` and were empty in the image (`TypeError: map is not a function`).
+  `loadLeaflet()` (`shared/map-tiles.ts`) accepts both shapes; a unit test covers each. Lesson: the
+  production image must be checked in a browser, not only the development server.
+
+## D36 - Hourly summary of the readings for network-wide consumption
+
+**Problem found in the 1000-meter load test.** With one reading per meter per minute (1.44 million
+readings a day), the dashboard read every reading of the period:
+- 24-hour network curve: 2.5 to 4 s;
+- "consumption today": 1.3 to 1.6 s.
+The target is 2 s for the whole dashboard. Probing the index at each bucket boundary instead gave the same
+figures but was still 3.4 s (25 000 indexed lookups on the hypertable).
+**Decision (taken with the project owner).** A table `reading_hourly` (Flyway V2, hypertable) keeps, for each
+meter and each hour:
+- the first and last reading of that hour;
+- their indexes.
+It is maintained in the same SQL statement as the reading insert (a data-modifying CTE), so ingestion keeps
+the same number of round trips. A late reading may become its hour's first reading; a duplicate changes
+nothing.
+The network consumption reads this summary for whole hours and the raw readings only for the current,
+unfinished hour, then applies the rules of D32 unchanged. One meter's consumption still reads the raw
+readings: it is already fast.
+**Why not a TimescaleDB continuous aggregate.** It needs a refresh job and a refresh window. Readings
+replayed after an outage older than that window, and deleted data, leave it stale unless refreshed by hand.
+A table updated in the same transaction as the reading is always exact and easy to test.
+**Result.** On the same data, the curve is answered in 0.15 to 0.3 s and the figures in 0.1 to 0.35 s;
+the dashboard is complete 0.8 s after the sign-in click. Integration tests check:
+- the summary after out-of-order and duplicate readings;
+- a period ending within an hour;
+- that the network curve still equals the sum of the per-meter curves.

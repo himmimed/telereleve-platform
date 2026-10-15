@@ -1,6 +1,24 @@
 # Test report
 
-> Completed in Phase 6 (test inventory, coverage figures, performance results with 1000 meters).
+All tests pass on 2026-10-15:
+- backend: 166 unit tests and 48 integration tests;
+- simulator: 35 tests;
+- frontend: 71 tests.
+
+Backend line coverage is 96 % (JaCoCo, unit and integration tests together), including 96.5 % for the
+`anomaly` package. The build fails below 70 % for that package (`check-anomaly-coverage`).
+
+## Acceptance criteria
+
+| Criterion (specification) | Result | Evidence |
+|---|---|---|
+| 1000 simulated meters publish readings; all are stored with no loss and no duplicates | Met | Load test: 532 610 published, 532 610 stored, 0 duplicate, 0 rejected, across 2 backend restarts and an 8-minute backend outage |
+| Each injected anomaly (A1-A5) produces the expected alert, and only one | Met | Load test with 1000 meters: exactly 5 alerts, one per anomalous meter, none on the 995 others; 2 e-mails (HIGH, CRITICAL) |
+| Dashboard (KPIs, charts, map) loads in under 2 s with 1000 meters | Met | 0.8 s from the sign-in click with 1.58 million readings in the last 24 h (after D36; 2.5-4 s before) |
+| Role permissions are enforced (verified by tests) | Met | `SecurityRulesTest` (every route x every role), `AuthIT`, `UserApiIT`, `AlertServiceRolesTest` |
+| All tests pass in CI; anomaly package coverage >= 70 % | Met locally | The CI runs the same commands (`.github/workflows/ci.yml`); the repository has no GitHub remote yet, so no CI run could be observed. Coverage 96.5 % |
+| `docker compose up --build` starts the whole platform on a clean machine | Met | New compose project with empty volumes: 6 services healthy in 84 s (images partly cached) |
+| README lets a newcomer run and understand the project in 10 minutes | Done | README rewritten: 4 steps to run, a guided tour, troubleshooting |
 
 ## How to run the tests
 
@@ -16,34 +34,104 @@ The coverage report is written to `backend/target/site/jacoco/index.html`.
 cd simulator
 ./mvnw verify               # 35 tests
 cd ../frontend
-npx ng test --watch=false   # Vitest, 68 tests
+npx ng test --watch=false   # Vitest, 71 tests
 ```
 
-Latest run (2026-10-14, Phase 5): backend 164 unit + 44 integration tests, simulator 35, frontend 68, all passing.
-JaCoCo: `anomaly` package at 89 % line coverage; the build fails below 70 % (`check-anomaly-coverage`).
-End-to-end check: with `docker compose up`, all 50 seeded meters published a reading within the first
-minute, payloads match the contract, and indexes increase between two readings.
-Phase 2 (same stack): 102 readings from the 50 meters stored with no duplicate and no rejection; backend
-stopped for 90 s then restarted: the 76 readings published meanwhile were all delivered and stored.
-Phase 3 (clean stack, demo scenario: 4 days of history, one anomaly per rule started 25 h ago): exactly
-one alert per injected anomaly and none elsewhere (A1 W-000004, A2 E-000012 raised then auto-resolved,
-A3 E-000011, A4 E-000005, A5 E-000008); 2 e-mails received in Mailpit (A3 HIGH, A4 CRITICAL); the
-silent-meter check was postponed twice while the 19 400 history readings were processed. The first run of
-this test, before D26, had flagged all 50 meters as silent: that is how the problem was found.
-Phase 4 (same stack, signed in through the API): no token 401; admin lists meters 200; technician
-creating or listing meters 403 and sees only their own alerts; operator listing users 403 but can list
-technicians; wrong password gives the French ProblemDetail; Swagger UI and health stay public; the
-simulator signs in with its technical account and readings keep flowing. Restarting the simulator after
-a day off then raised 48 false A2 spikes (the gap counted as one hour), all auto-resolved by the next
-readings: fixed by D31 and covered by `SpikeRuleTest`.
-Phase 5 (frontend on the real API, `ng serve` against the compose stack): every screen checked for each role.
-Operator: dashboard figures and network curve, alert list, assignment to a technician (PATCH 200), meter
-list and detail (consumption, alert history). Technician: no meter list nor administration, only the
-alert assigned to them, take-charge allowed. Admin: users and rule settings loaded from the database. No
-console error. Two problems found and fixed: day bars labelled one day early in a browser set to UTC (D33),
-and 37 of the 50 demo meters with the same client name (seeded `java.util.Random`).
+## Load test with 1000 meters (Phase 6)
 
-## Current inventory
+### Setup
+
+- **Machine:** one Windows 10 laptop running Docker Desktop (WSL 2, 7.2 GiB of memory for Docker). All six
+  containers ran on it, together with the test tools.
+- **Stack:** a separate compose project (`docker compose -p ceac-clean up --build`) with empty volumes. This
+  is also the clean-machine test.
+- **Load:**
+  - `APP_SEED_METER_COUNT=1000`: 700 electricity and 300 water meters;
+  - the simulator first publishes 4 days of history (387 000 readings at 400 per second), then one reading
+    per meter per minute;
+  - five anomalous meters, one per rule (compose defaults).
+- **Duration:** the test ran for about 24 hours of wall-clock time. The laptop slept twice (12 h and 10 h).
+  The platform resumed both times, but each sleep is a gap in the live readings.
+
+### Results
+
+| Measure | Result |
+|---|---|
+| Clean start (`up --build`, empty volumes) | All services healthy in 84 s (images partly cached) |
+| Readings published / stored | **532 610 / 532 610**: 0 failed publication, 0 duplicate key, 0 rejected reading |
+| Backend outage (stopped 8 min under live load) | 8 098 messages queued by Mosquitto; after restart, 8 000 readings for those 8 minutes, from all 1000 meters |
+| Ingestion delay at steady state (`received_at - read_at`) | 0.51 s on average, 1.03 s at most (998 readings per minute) |
+| Ingestion capacity (draining a backlog) | About 50 readings/s at first, then 67-116 readings/s after D34: 4 to 7 times the live load of 1000 meters (16.7 readings/s) |
+| Broker backlog during the history replay | Peak about 344 000 messages (limit 500 000), 0 dropped |
+| Alerts | A1 W-000004, A2 E-000012 (raised and auto-resolved), A3 E-000011, A4 E-000005, A5 E-000008, and nothing else |
+| E-mails | 2: `[HAUTE] A3 ... CEAC-E-000011`, `[CRITIQUE] A4 ... CEAC-E-000005` |
+| A3 during the replay | Postponed while ingestion caught up (D26); raised on E-000011 alone once the backlog was drained |
+| Storage | 532 610 readings take 72 MB (6 daily chunks) |
+| Migration V2 on 1.97 million readings | 16 s |
+
+**Dashboard time.** For a worst case, a synthetic full day was added at one reading per meter per minute:
+1.58 million readings in the last 24 hours, 1.97 million in total. This data was inserted only to measure
+timings, after the correctness checks above. Its arbitrary index values then caused A4 alerts on every meter.
+
+| Call (through nginx, 3 runs) | Before D36 | After D36 |
+|---|---|---|
+| `GET /api/dashboard/consumption-trend?step=hour` (24 h) | 2.46-4.05 s | 0.15-0.23 s |
+| `GET /api/dashboard/consumption-trend?step=day` (7 days) | 1.32-2.02 s | 0.22-0.30 s |
+| `GET /api/dashboard/stats` | 1.27-1.63 s | 0.10-0.35 s |
+| `GET /api/meters/map` (1000 markers) | 0.04-0.10 s | 0.05-0.12 s |
+| `GET /api/alerts`, `GET /api/meters` (pages) | 0.02-0.19 s | 0.02-0.12 s |
+| **Whole dashboard in the browser, from the sign-in click** | about 3-4 s (estimated from the slowest call) | **0.79 s** |
+
+The application shell itself loads in 0.18 s (496 KB transferred). The map draws its 1000 markers.
+
+**Resources.**
+
+| Container | During the history replay | Live load only |
+|---|---|---|
+| Backend | 45-107 % CPU (before D34), about 45 % after; 370-450 MiB | about 5 % CPU |
+| TimescaleDB | 40-50 % CPU, 120-175 MiB | about 10 % CPU |
+| Mosquitto | about 15 % CPU, up to 171 MiB with 344 000 messages queued | low |
+| Simulator | 40 % CPU while publishing history at 400 per second, 130 MiB | 2.5 % CPU |
+| nginx (frontend) | 8 MiB | 8 MiB |
+
+### Problems found and fixed during the test
+
+| Problem | Fix |
+|---|---|
+| Ingestion at about 50 readings/s: 23 database round trips per reading | 6 round trips per reading (D34), unchanged results |
+| Network curve and "consumption today" read every reading (2.5-4 s) | Hourly summary table maintained with each insert (D36) |
+| No map at all in the Docker image: Leaflet's functions are under `default` in the production bundle | Shared loader that accepts both shapes (`leafletApi`), unit-tested (D35) |
+| Frontend container "unhealthy": `localhost` resolves to IPv6 in Alpine | Health check on `127.0.0.1` (D35) |
+| Some hashed bundles (`chunk-C-H3G-Ow.js`) not cached | nginx pattern accepts `-` and `_` in hashes |
+| "1 critiques" on the dashboard | Singular and plural follow the count |
+
+### Limits of this test
+
+- Everything ran on one laptop: a server would have more CPU and lower latency between the containers.
+- Ingestion is one ordered consumer, so each meter's readings stay in sequence for A4. It handles 4 to 7
+  times the 1000-meter load measured here. The next step would be several consumers partitioned by meter.
+- The live phase was interrupted twice by the laptop sleeping. Those gaps are real outages from the
+  platform's point of view: it resumed with no loss, and A2 ignored the gaps (D31).
+
+## End-to-end checks of the earlier phases
+
+- **Phase 1:** with `docker compose up`, all 50 seeded meters published a reading within the first minute.
+  Payloads match the contract, and indexes increase between two readings.
+- **Phase 2:** 102 readings from the 50 meters were stored with no duplicate and no rejection. The backend
+  was stopped for 90 s then restarted: the 76 readings published meanwhile were all delivered and stored.
+- **Phase 3** (clean stack; demo scenario of 4 days of history, one anomaly per rule started 25 h ago):
+  - exactly one alert per injected anomaly and none elsewhere: A1 W-000004, A2 E-000012 (raised then
+    auto-resolved), A3 E-000011, A4 E-000005, A5 E-000008;
+  - 2 e-mails (A3 HIGH, A4 CRITICAL);
+  - the first run, before D26, flagged all 50 meters as silent. That is how the problem was found.
+- **Phase 4** (signed in through the API): every role restriction gave the expected 401 / 403, and Swagger
+  UI and health stay public. Restarting the simulator after a day off raised 48 false A2 spikes, fixed by D31.
+- **Phase 5** (frontend on the real API): every screen was checked for each role. Two problems were found
+  and fixed:
+  - day bars labelled one day early in a browser set to UTC (D33);
+  - 37 of the 50 demo meters had the same client name.
+
+## Test inventory
 
 | Phase | Test class | Type | What it checks |
 |---|---|---|---|
@@ -91,3 +179,22 @@ and 37 of the 50 demo meters with the same client name (seeded `java.util.Random
 | 5 | `SecurityRulesTest` (extended) | Web slice | Map, stats and trend open to the three roles, 401 without token |
 | 5 | `FesMeterGeneratorTest` (extended) | Unit | Client names and streets vary between meters (regression) |
 | 5 | `calendar.spec` | Frontend unit | Periods start at Moroccan midnight / first of the month across years; bucket labels and dates shown on UTC+1 whatever the browser time zone (D33) |
+| 6 | `AnomalyEngineTest` (extended) | Unit (Mockito) | No second `raise` while the alert is open, no `resolve` when none is open (D34) |
+| 6 | `ConsumptionApiIT` (extended) | Integration (TimescaleDB) | Latest reading at or before several instants in one query: exact match, between readings, after the last one, before the first one |
+| 6 | `DashboardApiIT` (extended) | Integration (TimescaleDB) | Hourly summary after an out-of-order reading and a duplicate; network curve over a period ending within an hour, equal to the per-meter curve (D36) |
+| 6 | `SchemaMigrationIT` (extended) | Integration (TimescaleDB) | Flyway V2 applied, `reading_hourly` is a hypertable |
+| 6 | `map-tiles.spec` | Frontend unit | Leaflet API found on the module (development server) or under `default` (production bundle); the real package loads |
+
+## Known limits and next steps
+
+- **No GitHub remote yet:** the CI workflow has not run on GitHub. Its commands were run locally.
+- **Simulator restarts:** injected anomalies start relative to the simulator's own start time. Restarting
+  it on an existing database replays a history that contradicts the stored one for the anomalous meters, and
+  raises real A2 / A4 alerts there. A fresh stack (`docker compose down -v`) is consistent. An absolute
+  start time (`SIM_ANOMALY_START`) would remove this.
+- **Ingestion scaling:** one ordered consumer handles 67-116 readings/s on the test laptop; beyond that,
+  partition the consumers by meter.
+- **Data retention:** no retention or compression policy yet (72 MB for 532 000 readings, about 135 bytes
+  each: some 200 MB per day for 1000 meters read every minute; TimescaleDB compression would divide it).
+- **Session:** the token lives in memory, so reloading the page signs the user out (D16). A refresh token in
+  an HttpOnly cookie would fix this.

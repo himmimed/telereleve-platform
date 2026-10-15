@@ -1,130 +1,179 @@
 # CEAC Télérelève Platform
 
 Remote meter reading platform for **CEAC Maroc** (Fès), a manufacturer of electricity and water meters.
-Smart meters publish their readings over **MQTT**; the platform stores them as **time series**, detects
-anomalies (fault, fraud, abnormal consumption) and shows everything on a web dashboard.
+Smart meters publish their readings over **MQTT**; the platform stores them as **time series**, computes
+consumption, detects anomalies (fault, fraud, abnormal consumption), raises alerts (e-mailed when
+serious) and shows everything in a French web interface.
 
-Real meters are out of scope: a realistic **meter simulator** produces the readings. All data is simulated.
+Real meters are out of scope: a realistic **meter simulator** produces the readings. **All data is
+simulated** (meters, customers, addresses).
 
-> Status: **Phases 0 to 5 done** (meters, simulator, MQTT ingestion, consumption, anomaly detection A1-A5,
-> alerts and e-mails, JWT security, Angular frontend on the real API). Phase 6 (load test, Docker image of
-> the frontend, final documentation) remains. See [Roadmap](#roadmap).
+*[Screenshot: dashboard]*
 
-## Tech stack
+## Run it (5 minutes)
+
+Prerequisite: **Docker** (Docker Desktop on Windows / macOS, started). Nothing else: Java and Node are
+only needed to develop outside containers.
+
+1. Create your configuration from the example:
+
+   ```sh
+   cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+   ```
+
+2. Edit `.env` and replace every `change-me` with your own values. `JWT_SECRET` needs a random base64
+   key, for example:
+
+   ```sh
+   openssl rand -base64 48
+   # or in PowerShell: [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
+   ```
+
+3. Build and start everything (the first build takes a few minutes):
+
+   ```sh
+   docker compose up --build
+   ```
+
+4. Open <http://localhost:4200> and sign in with a demo account. They all use the password
+   `APP_SEED_DEMO_PASSWORD` from `.env` (`demo1234` in the example):
+
+   | Username | Role | What they do |
+   |---|---|---|
+   | `admin` | Administrator | Meters, users, detection thresholds |
+   | `operateur` | Operator | Supervision, alert handling, assignment to technicians |
+   | `technicien`, `technicien2` | Technician | Map, dashboard, the alerts assigned to them |
+
+Stop with `docker compose down` (add `-v` to also delete the data).
+
+| Address | What |
+|---|---|
+| <http://localhost:4200> | Web interface |
+| <http://localhost:8080/swagger-ui.html> | REST API documentation (Swagger UI; *Authorize* with a token from `POST /api/auth/login`) |
+| <http://localhost:8025> | Mailpit: the alert e-mails sent by the platform |
+| <http://localhost:8080/actuator/health> | Backend health |
+| `localhost:1883` / `localhost:5432` | MQTT broker (authenticated) / PostgreSQL + TimescaleDB |
+
+## A 5-minute tour
+
+The compose defaults run a **demo scenario**:
+- 50 meters around Fès;
+- the simulator first publishes 4 days of history, then one reading per meter per minute;
+- it injects one anomaly per detection rule, started 25 hours ago, so every alert appears within minutes.
+
+| Meter | Injected anomaly | Expected alert |
+|---|---|---|
+| `CEAC-W-000004` | consumption stopped | A1 zero consumption (MEDIUM) |
+| `CEAC-E-000012` | one hour at 5 times the usual consumption | A2 spike (MEDIUM), then resolved automatically |
+| `CEAC-E-000011` | stops publishing | A3 silent meter (HIGH, e-mailed) |
+| `CEAC-E-000005` | index goes down | A4 decreasing index (CRITICAL, e-mailed) |
+| `CEAC-E-000008` | voltage around 260 V | A5 voltage out of range (MEDIUM) |
+
+1. As `operateur`, look at the **dashboard**: key figures, network consumption, alerts to handle.
+2. On the **map**, spot the meters in alert and the silent one.
+3. Open **Alertes** and assign the A4 alert to *Hamza Tazi*.
+4. Open <http://localhost:8025> to read the HIGH and CRITICAL alert e-mails.
+5. Sign out, sign in as `technicien`: only the assigned alert is listed; take charge of it.
+6. As operator, open a meter from **Compteurs**: consumption per hour, day or month, CSV export.
+
+*[Screenshots: map, meter detail, alerts]*
+
+Every screen is described in the [user guide (French)](docs/user-guide.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    SIM[Meter simulator] -- "MQTT QoS 1" --> MQ[(Mosquitto)]
+    MQ --> BE[Spring Boot backend]
+    BE --> DB[(PostgreSQL 16 + TimescaleDB)]
+    BE -- "alert e-mails" --> MAIL[Mailpit]
+    FE["Angular app (nginx)"] -- "REST + JWT" --> BE
+```
+
+- **Ingestion**: the backend subscribes to `ceac/meters/+/readings`, validates each reading and stores it
+  idempotently. Nothing is lost when the backend restarts, and nothing is stored twice.
+- **Anomaly detection**: five rules (A1-A5) run on each reading or every 5 minutes, raise one alert per
+  anomaly, resolve it automatically when it is gone, and e-mail HIGH and CRITICAL alerts.
+- **Consumption**: TimescaleDB `time_bucket` per hour, day or month, on Moroccan time.
+- **Security**: JWT login, three roles checked on every route, technicians limited to their own alerts.
+
+Details: [architecture](docs/architecture.md) (diagrams, data model, security) and the
+[technical decisions](docs/decisions.md) (D1-D36, the reason behind each choice).
 
 | Layer | Technologies |
 |---|---|
-| Backend | Java 21, Spring Boot 3.5 (Web, Data JPA, Validation, Actuator), Flyway |
-| Messaging | Eclipse Mosquitto (MQTT), Spring Integration MQTT |
+| Backend | Java 21, Spring Boot 3.5 (Web, Data JPA, Validation, Security, Actuator), Flyway, springdoc |
+| Messaging | Eclipse Mosquitto 2, Spring Integration MQTT (Paho) |
 | Database | PostgreSQL 16 + TimescaleDB |
-| Frontend | Angular 22, Angular Material 3, Chart.js, Leaflet, Vitest |
-| Tests | JUnit 5, Mockito, AssertJ, Testcontainers, JaCoCo |
+| Frontend | Angular 22, Angular Material 3, Chart.js, Leaflet, nginx |
+| Tests | JUnit 5, Mockito, AssertJ, Testcontainers, JaCoCo, Vitest |
 | DevOps | Docker, Docker Compose, GitHub Actions |
 
-## Quick start
+## Developing
 
-Prerequisite: **Docker** (Docker Desktop on Windows/macOS). Java and Node are only needed to develop
-outside containers.
-
-```sh
-cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-# edit .env: set your own passwords and a JWT signing key, for example
-#   openssl rand -base64 48            (or PowerShell: [Convert]::ToBase64String((1..48|%{Get-Random -Max 256})))
-docker compose up --build
-```
-
-**Sign in.** Every API route except login, health and the API documentation needs a JWT. The `dev`
-profile creates these demo accounts, all with the password `APP_SEED_DEMO_PASSWORD` from `.env`:
-
-| Username | Name | Role |
-|---|---|---|
-| `admin` | Youssef El Amrani | ADMIN: meters, users, rule settings |
-| `operateur` | Salma Bennani | OPERATOR: supervision, alert handling and assignment |
-| `technicien`, `technicien2` | Hamza Tazi, Nadia Alaoui | TECHNICIAN: map and their own alerts |
-
-The simulator signs in with the technical account `simulateur` (`SIMULATOR_PASSWORD`). Get a token with
-`POST /api/auth/login` (`{"username":"admin","password":"..."}`) and send it as
-`Authorization: Bearer <token>`, or use the *Authorize* button of Swagger UI.
-
-| Address | Service |
-|---|---|
-| <http://localhost:4200> | Web interface, started with `npm start` in `frontend/` (see below; Docker image in Phase 6) |
-| <http://localhost:8080/swagger-ui.html> | API documentation (Swagger UI) |
-| <http://localhost:8080/actuator/health> | Backend health |
-| <http://localhost:8025> | Mailpit (e-mails sent by the platform) |
-| `localhost:1883` | MQTT broker (authenticated) |
-| `localhost:5432` | PostgreSQL / TimescaleDB |
-
-The `dev` profile seeds 50 meters around Fès (`APP_SEED_METER_COUNT` in `.env`), and the simulator
-publishes one reading per meter and per minute on `ceac/meters/{serial}/readings`. Watch them with:
-
-```sh
-docker compose exec mosquitto sh -c 'mosquitto_sub -u "$MQTT_USERNAME" -P "$MQTT_PASSWORD" -t "ceac/meters/+/readings" -v'
-```
-
-**Demo scenario** (compose defaults, see `.env.example`): the simulator first publishes 4 days of history,
-then injects one anomaly per rule, started 25 hours ago, so every alert appears within minutes:
-`CEAC-W-000004` zero consumption (A1), `CEAC-E-000012` spike (A2, raised then resolved), `CEAC-E-000011`
-silent (A3), `CEAC-E-000005` decreasing index (A4), `CEAC-E-000008` voltage (A5). Alerts:
-`GET /api/alerts` (signed in); HIGH and CRITICAL e-mails: <http://localhost:8025>.
-
-The backend stores every reading (TimescaleDB hypertable `reading`). Try, with a meter id from
-`/api/meters`: `/api/meters/{id}`, `/api/meters/{id}/consumption?step=hour` and `/api/meters/{id}/export.csv`.
-
-Stop with `docker compose down` (add `-v` to delete the data volumes).
-
-## Developing locally
-
-Start the infrastructure only, then run the backend from your IDE or the command line:
+Infrastructure in Docker, backend from your IDE or the command line (JDK 21 or later):
 
 ```sh
 docker compose up -d timescaledb mosquitto mailpit
 cd backend
-./mvnw spring-boot:run      # reads ../.env automatically
+./mvnw spring-boot:run          # reads ../.env automatically
 ```
 
-Tests:
-
-```sh
-./mvnw test      # unit tests (no Docker needed)
-./mvnw verify    # unit + integration tests with Testcontainers (Docker required) + coverage report
-```
-
-Frontend (Node 24):
+Frontend with live reload (Node 24). Stop the `frontend` container first: it also uses port 4200.
 
 ```sh
 cd frontend
 npm install
-npm start        # http://localhost:4200, proxies /api to the backend on :8080
+npm start                       # http://localhost:4200, /api proxied to the backend on :8080
 ```
 
-Sign in with a demo account (see *Sign in* above). The frontend can also run without the backend on a
-simulated API in the browser (`useMockApi` in `frontend/src/environments/environment.ts`); see
+The frontend can also run without any backend, on a simulated API in the browser: see
 [frontend/README.md](frontend/README.md).
+
+Tests (inventory and results in the [test report](docs/test-report.md)):
+
+```sh
+cd backend   && ./mvnw verify               # unit + integration tests (Testcontainers: Docker needed) + coverage
+cd simulator && ./mvnw verify
+cd frontend  && npx ng test --watch=false   # Vitest
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs them all on every push and pull request, uploads the
+JaCoCo report and builds the Docker images.
+
+To try 1000 meters, set `APP_SEED_METER_COUNT=1000` in `.env`; the load test results are in the
+[test report](docs/test-report.md).
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `Set JWT_SECRET in .env` (or another variable) | `.env` missing or incomplete: steps 1 and 2 |
+| Backend stops at startup: `JWT_SECRET must be base64-encoded` | `JWT_SECRET` is still the example value: generate a key (step 2) |
+| Port 4200, 8080 or 5432 already in use | Stop the other program, or change `FRONTEND_PORT`, `BACKEND_PORT` or `POSTGRES_PORT` in `.env` |
+| Signed out after reloading the page | Intended: the session is kept in memory only, for security (D16). Sign in again |
+| No reading arrives | `docker compose logs simulator`: it waits for the backend, then reports once a minute |
 
 ## Repository layout
 
-```
+```text
 backend/     Spring Boot application (package ma.ceac.telereleve)
 simulator/   Smart meter simulator (standalone Java 21)
-frontend/    Angular application
+frontend/    Angular application, served by nginx in Docker
 docker/      Infrastructure configuration (Mosquitto)
-docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR)
+docs/        architecture.md, decisions.md, test-report.md, user-guide.md (FR), rapport.md (FR)
 ```
 
-## Documentation
+## Status
 
-- [Architecture](docs/architecture.md)
-- [Technical decisions](docs/decisions.md)
-- [Test report](docs/test-report.md)
-- [Guide utilisateur (FR)](docs/user-guide.md)
+All six phases are done:
+- Phase 0: setup;
+- Phase 1: meters and simulator;
+- Phase 2: MQTT ingestion and consumption;
+- Phase 3: anomaly detection and alerts;
+- Phase 4: JWT security and roles;
+- Phase 5: Angular frontend;
+- Phase 6: load test with 1000 meters, full Docker Compose, final documentation.
 
-## Roadmap
-
-- [x] Phase 0 - Setup: monorepo, Docker Compose infrastructure, Flyway schema, CI
-- [x] Phase 1 - Meters and simulator
-- [x] Phase 2 - MQTT ingestion and consumption
-- [x] Phase 3 - Anomaly detection and alerts
-- [x] Phase 4 - Security (JWT, roles)
-- [x] Phase 5 - Angular frontend on the real API (dashboard, map, meters, alerts, administration)
-- [ ] Phase 6 - Performance, documentation, finalisation
+Known limits and next steps are listed at the end of the [test report](docs/test-report.md).
