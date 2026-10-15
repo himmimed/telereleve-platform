@@ -80,6 +80,10 @@ export class LoginPage {
         keyboard: false,
         touchZoom: false,
       });
+      // Leaflet measures its container once; re-measure when the layout settles or resizes.
+      const resize = new ResizeObserver(() => map.invalidateSize());
+      resize.observe(this.mapElement().nativeElement);
+      map.on('unload', () => resize.disconnect());
       this.leaflet.set({ L, map });
     });
 

@@ -99,6 +99,10 @@ export class MapPage {
         zoom: 13,
         zoomControl: true,
       });
+      // Leaflet measures its container once; re-measure when the layout settles or resizes.
+      const resize = new ResizeObserver(() => map.invalidateSize());
+      resize.observe(this.mapElement().nativeElement);
+      map.on('unload', () => resize.disconnect());
       map.on('click', () => this.selected.set(null));
       const layer = L.layerGroup().addTo(map);
       this.leaflet.set({ L, map, layer });
