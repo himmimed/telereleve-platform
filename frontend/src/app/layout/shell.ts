@@ -97,10 +97,11 @@ export class Shell {
       )
       .subscribe(() => {
         this.menuOpen.set(false);
-        this.afterFrame(() => this.measureMarker());
+        this.afterFrame(() => this.measureMarker(true));
       });
 
-    // (Re)measure when the links appear (wide screens), change (roles) or are resized.
+    // Re-measure whenever the links appear or any of them changes size (a web font arriving, a resize): the
+    // centred links shift when a neighbour grows, and the marker must follow.
     effect((onCleanup) => {
       const element = this.links()?.nativeElement;
       this.nav();
@@ -108,11 +109,13 @@ export class Shell {
         return;
       }
       this.afterFrame(() => this.measureMarker());
+      void document.fonts?.ready.then(() => this.measureMarker());
       if (typeof ResizeObserver === 'undefined') {
         return;
       }
       const observer = new ResizeObserver(() => this.measureMarker());
       observer.observe(element);
+      element.querySelectorAll('a.link').forEach((link) => observer.observe(link));
       onCleanup(() => observer.disconnect());
     });
   }
@@ -123,13 +126,22 @@ export class Shell {
     }
   }
 
-  private measureMarker(): void {
+  /**
+   * `travel` is true after a page change. Once the marker has travelled it keeps its transition, so a
+   * later re-measure (resize, font) glides to the new place instead of jumping, and never cuts a glide short.
+   */
+  private measureMarker(travel = false): void {
     const active = this.links()?.nativeElement.querySelector<HTMLElement>('a.link.active');
     if (!active) {
       this.marker.update((m) => ({ ...m, shown: false }));
       return;
     }
-    this.marker.update((m) => ({ x: active.offsetLeft, w: active.offsetWidth, shown: true, animate: m.shown }));
+    // Fractional pixels, not offsetLeft / offsetWidth: those round, and the pill would sit up to half a pixel off.
+    const nav = this.links()!.nativeElement.getBoundingClientRect();
+    const box = active.getBoundingClientRect();
+    const x = Math.round((box.left - nav.left) * 100) / 100;
+    const w = Math.round(box.width * 100) / 100;
+    this.marker.update((m) => (m.x === x && m.w === w && m.shown ? m : { x, w, shown: true, animate: m.shown && (travel || m.animate) }));
   }
 
   protected logout(): void {

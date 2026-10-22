@@ -27,8 +27,15 @@
             [attr.aria-current]="rla.isActive ? 'page' : null"
           >
             {{ item.label }}
-            @if (item.badge && openAlerts() > 0) {
-              <span class="count num" [attr.aria-label]="openAlerts() + ' alertes ouvertes'">{{ openAlerts() }}</span>
+            @if (item.badge) {
+              <!-- The slot is always there (hidden at zero): a count arriving late must not push the links. -->
+              <span
+                class="count num"
+                [class.empty]="openAlerts() === 0"
+                [attr.aria-hidden]="openAlerts() === 0 ? 'true' : null"
+                [attr.aria-label]="openAlerts() > 0 ? openAlerts() + ' alertes ouvertes' : null"
+                >{{ openAlerts() > 0 ? openAlerts() : '' }}</span
+              >
             }
           </a>
         }

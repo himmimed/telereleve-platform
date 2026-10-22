@@ -451,7 +451,11 @@ only, reduced motion respected, no decorative infinite animation.
 - **Navigation marker**: one marker (soft pill and lime diamond) that slides from link to link over 620 ms
   with an in-out curve (`--ease-glide`, `--duration-glide`), instead of a diamond that popped in and out
   per link. It is measured from the active link (`offsetLeft`, `offsetWidth`) after each navigation and on
-  resize, and does not animate on first placement.
+  resize, and does not animate on first placement. Two causes of a misplaced marker were found and fixed
+  (UI/UX Pro Max, "content jumping"): the alert count arrived late and pushed the centred links sideways,
+  so its slot is now always reserved (hidden at zero); and the scrollbar of long pages shifted the whole bar
+  by about 15 px at page changes, so `scrollbar-gutter: stable` now reserves it everywhere. The marker is
+  also re-measured whenever any link changes size and measured in fractional pixels.
 - **Map**: pins are now DOM markers (`divIcon`) styled in CSS, not canvas circles, so they can animate:
   they pop in one after the other, grow on hover, and alerts send out three slow rings on arrival, then
   stay still. The first display starts one zoom level back and flies to the meters over 1.8 s; selecting a

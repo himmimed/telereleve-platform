@@ -157,6 +157,13 @@
   color: #fff;
   font-size: 0.72rem;
   font-weight: 600;
+  transition: opacity var(--duration-base) var(--ease-out);
+
+  // Reserved space with nothing in it: keeps the links from shifting when the count appears.
+  &.empty {
+    visibility: hidden;
+    opacity: 0;
+  }
 }
 
 .tools {

@@ -146,6 +146,12 @@ body {
   height: 100%;
 }
 
+// The scrollbar's space is always reserved. Without it, a short page (no scrollbar) and a long one (scrollbar)
+// differ in width by about 15 px, so the centred navigation links jump sideways at every page change.
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   background: var(--app-bg);
