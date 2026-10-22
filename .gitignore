@@ -25,3 +25,8 @@ Thumbs.db
 
 # Local Claude Code / desktop preview configuration
 .claude/
+
+# Overleaf upload, rebuilt with docs/rapport-latex/tools/make-zip.py
+docs/rapport-latex/rapport-overleaf.zip
+docs/rapport-latex/build/
+docs/soutenance/build/

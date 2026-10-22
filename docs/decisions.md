@@ -434,3 +434,28 @@ agreement (`frontend/public/brand/`, 73 KB and 447 KB, WebP):
   logo is black on transparent and would disappear on the dark theme.
 **Unchanged:** routes, menu labels, screens and behaviour; the status and severity colours, validated for
 colour-vision deficiency (D11).
+
+## D38 - Motion system and finishing touches, guided by UI/UX Pro Max
+**Context.** After the CEAC redesign (D37), a second pass with the UI/UX Pro Max skill (installed in
+`~/.claude/skills`) to make the interface feel more finished without changing its look. The skill's own
+palette (dark navy, neon accents) was deliberately **not** used: the brand stays as in D37. Only its
+interaction rules were applied: shared motion tokens, entering slower than leaving, transform and opacity
+only, reduced motion respected, no decorative infinite animation.
+**Changes:**
+- **Motion tokens** in `styles.scss`: `--duration-fast` 140 ms (feedback), `--duration-base` 220 ms (hover,
+  focus), `--duration-slow` 420 ms (movement between places), plus `--ease-in` and `--ease-spring` next to
+  the existing `--ease-out`. Hard-coded durations in the shell and dashboard now use them.
+- **Page transitions** through Angular's `withViewTransitions` (View Transitions API): the page leaves in
+  140 ms and the next one rises in over 420 ms; the navigation bar does not move and its lime diamond glides
+  to the new link. Browsers without the API simply navigate without animation.
+- **Chart**: a hairline under the pointer and a ringed dot on the latest value (line charts); values rise
+  from the baseline in a left-to-right wave, but only when the series changes (first display, other energy
+  or period). A plain 30 s refresh glides the values that changed and no longer replays the entrance.
+- **Dashboard**: a liveness dot that sends out one ring each time new data lands (one pulse per refresh, not a
+  permanent animation); the four key figures stay in a 2 x 2 grid on phones instead of a 4-row column;
+  "30 s" no longer breaks across two lines.
+- **Tables**: clickable rows get a 3 px primary accent bar that slides in on hover and keyboard focus.
+**Unchanged:** colours, type, layout on desktop, routes, labels and behaviour. All of it stops under
+`prefers-reduced-motion` (the global rule, and the chart disables its animation).
+**Limit.** Animation is checked by eye and by build, not by unit tests (jsdom has no canvas or view
+transitions).

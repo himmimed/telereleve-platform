@@ -34,6 +34,38 @@
   font-size: 0.85rem;
 }
 
+// Liveness dot, left of the freshness text: one ring leaves it each time new data lands (a single pulse per
+// refresh, never a permanent animation).
+.live {
+  order: -1;
+  position: relative;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--ceac-lime-bright);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ceac-lime-bright);
+    animation: ping 1400ms var(--ease-out) both;
+  }
+}
+
+@keyframes ping {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
 // Lime line drawn across the 30 s before the next refresh. No background track: only progress shows.
 .sync-line {
   position: absolute;
@@ -196,7 +228,7 @@
     width: 16px;
     height: 16px;
     line-height: 16px;
-    transition: transform 240ms var(--ease-out);
+    transition: transform var(--duration-base) var(--ease-spring);
   }
 
   &:hover .mat-icon {
@@ -229,7 +261,7 @@
   border-radius: var(--radius-control);
   color: inherit;
   text-decoration: none;
-  transition: background-color 200ms var(--ease-out), transform 240ms var(--ease-out);
+  transition: background-color var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
 
   &:hover {
     background: color-mix(in srgb, var(--ceac-blue) 5%, transparent);
@@ -281,7 +313,7 @@ li + li .alert-row {
   color: var(--ceac-blue);
   opacity: 0;
   transform: translate(-4px, 4px);
-  transition: opacity 200ms var(--ease-out), transform 240ms var(--ease-out);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
 }
 
 .alert-skeletons {
@@ -390,7 +422,18 @@ li + li .alert-row {
   }
 }
 
-@media (max-width: 520px) {
+// Phones keep the 2 x 2 grid, with tighter cells, so the four figures fit on one screen.
+@media (max-width: 600px) {
+  .figure {
+    padding: 18px 14px 20px;
+  }
+
+  .figure:nth-child(odd) {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 359px) {
   .figures {
     grid-template-columns: minmax(0, 1fr);
   }

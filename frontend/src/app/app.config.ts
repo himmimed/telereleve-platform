@@ -4,7 +4,12 @@ import localeFr from '@angular/common/locales/fr';
 import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS } from '@angular/material/snack-bar';
-import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import {
+  provideRouter,
+  withComponentInputBinding,
+  withInMemoryScrolling,
+  withViewTransitions,
+} from '@angular/router';
 import { environment } from '../environments/environment';
 import { routes } from './app.routes';
 import { authInterceptor, errorInterceptor } from './core/http/interceptors';
@@ -20,6 +25,8 @@ export const appConfig: ApplicationConfig = {
       routes,
       withComponentInputBinding(),
       withInMemoryScrolling({ scrollPositionRestoration: 'top' }),
+      // Pages cross-fade instead of cutting (see the view-transition rules in styles.scss).
+      withViewTransitions({ skipInitialTransition: true }),
     ),
     provideHttpClient(
       withInterceptors([

@@ -10,6 +10,7 @@ import {
   LineElement,
   LinearScale,
   PointElement,
+  Plugin,
   ScriptableContext,
   Tooltip,
 } from 'chart.js';
@@ -51,7 +52,7 @@ export interface ChartPoint {
   ],
   template: `
     <div class="canvas-wrap">
-      <canvas baseChart [type]="kind()" [data]="config().data" [options]="config().options" role="img" [attr.aria-label]="ariaLabel()"></canvas>
+      <canvas baseChart [type]="kind()" [data]="config().data" [options]="config().options" [plugins]="config().plugins" role="img" [attr.aria-label]="ariaLabel()"></canvas>
     </div>
     <table class="visually-hidden">
       <caption>{{ ariaLabel() }}</caption>
@@ -78,6 +79,9 @@ export class ConsumptionChart {
   private readonly theme = inject(ThemeService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
+  /** Identifies the series being shown, so the grow-in plays when it changes but not on a plain refresh. */
+  private shape = '';
+
   protected readonly config = computed(() => {
     // Depend on the theme so colours are re-resolved when it changes.
     this.theme.isDark();
@@ -85,6 +89,9 @@ export class ConsumptionChart {
     const unit = this.unit();
     const decimals = this.decimals();
     const kind = this.kind();
+    const shape = `${kind}|${unit}|${points.length}|${points[0]?.label ?? ''}`;
+    const entering = shape !== this.shape;
+    this.shape = shape;
 
     const accent = resolveColor('var(--mat-sys-primary)', this.host);
     const accentDeep = resolveColor('var(--ceac-blue-deep)', this.host);
@@ -101,6 +108,9 @@ export class ConsumptionChart {
       gradient.addColorStop(1, fillBottom);
       return gradient;
     };
+    const halo = resolveColor('color-mix(in srgb, var(--mat-sys-primary) 20%, transparent)', this.host);
+    const guide = resolveColor('color-mix(in srgb, var(--mat-sys-primary) 38%, transparent)', this.host);
+    const surface = resolveColor('var(--app-panel)', this.host);
     const muted = resolveColor('var(--app-muted)', this.host);
     const grid = resolveColor('var(--app-hairline)', this.host);
     const tooltipBg = resolveColor('var(--mat-sys-inverse-surface)', this.host);
@@ -138,16 +148,70 @@ export class ConsumptionChart {
       ],
     };
 
+    // Line chart only: a hairline under the pointer and a ringed dot on the latest value, so the eye lands on
+    // "where are we now" before reading the axis.
+    const readout: Plugin = {
+      id: 'readout',
+      beforeDatasetsDraw: (chart) => {
+        const active = chart.tooltip?.getActiveElements();
+        if (kind !== 'line' || !active?.length) {
+          return;
+        }
+        const { ctx, chartArea } = chart;
+        ctx.save();
+        ctx.strokeStyle = guide;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.round(active[0].element.x) + 0.5, chartArea.top);
+        ctx.lineTo(Math.round(active[0].element.x) + 0.5, chartArea.bottom);
+        ctx.stroke();
+        ctx.restore();
+      },
+      afterDatasetsDraw: (chart) => {
+        const last = chart.getDatasetMeta(0).data.at(-1);
+        if (kind !== 'line' || !last) {
+          return;
+        }
+        const { ctx } = chart;
+        ctx.save();
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = accent;
+        ctx.strokeStyle = surface;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      },
+    };
+
+    // Left to right: each value rises from the baseline a few milliseconds after its neighbour.
+    const wave = (ctx: ScriptableContext<keyof ChartTypeRegistry>) =>
+      ctx.type === 'data' ? ctx.dataIndex * (kind === 'line' ? 14 : 20) : 0;
+
     const options: ChartConfiguration['options'] = {
       responsive: true,
       maintainAspectRatio: false,
-      // First arrival: values grow from the baseline. Later refreshes only move what changed.
-      animation: prefersReducedMotion() ? false : { duration: 900, easing: 'easeOutQuart' },
-      animations: prefersReducedMotion()
-        ? {}
-        : { y: { from: (ctx: ScriptableContext<keyof ChartTypeRegistry>) => ctx.chart.scales['y'].getPixelForValue(0) } },
+      // A new series (first arrival, other energy or period): values grow from the baseline in a wave. A plain
+      // refresh only glides what changed, so the chart does not replay its entrance every 30 s.
+      animation: prefersReducedMotion()
+        ? false
+        : { duration: entering ? 900 : 480, easing: entering ? 'easeOutQuart' : 'easeOutCubic' },
+      animations:
+        prefersReducedMotion() || !entering
+          ? {}
+          : {
+              y: {
+                from: (ctx: ScriptableContext<keyof ChartTypeRegistry>) => ctx.chart.scales['y'].getPixelForValue(0),
+                delay: wave,
+              },
+            },
       interaction: { mode: 'index', intersect: false },
-      layout: { padding: { top: 8 } },
+      layout: { padding: { top: 8, right: 12 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -190,7 +254,7 @@ export class ConsumptionChart {
       },
     };
 
-    return { data, options };
+    return { data, options, plugins: [readout] };
   });
 
   protected format(value: number): string {

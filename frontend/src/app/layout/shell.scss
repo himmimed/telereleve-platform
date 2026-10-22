@@ -92,10 +92,14 @@
   color: var(--ceac-ink);
   font-weight: 500;
   text-decoration: none;
-  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+  transition: background-color var(--duration-base) var(--ease-out), color var(--duration-base) var(--ease-out);
 
   &:hover {
     background: color-mix(in srgb, var(--ceac-blue) 7%, transparent);
+  }
+
+  &:active {
+    transform: translateY(1px);
   }
 
   // Current page: brand blue and a small lime diamond, as on ceacmaroc.com.
@@ -108,7 +112,7 @@
     height: 7px;
     background: var(--ceac-lime-bright);
     transform: translateX(-50%) rotate(45deg) scale(0);
-    transition: transform 320ms var(--ease-out);
+    transition: transform var(--duration-slow) var(--ease-spring);
   }
 
   &.active {
@@ -116,6 +120,9 @@
 
     &::after {
       transform: translateX(-50%) rotate(45deg) scale(1);
+      // Shared across links: on a page change the browser glides the diamond from the old link to the new
+      // one (view transition, see styles.scss).
+      view-transition-name: nav-dot;
     }
   }
 }
@@ -252,6 +259,8 @@
 }
 
 .content {
+  // The page that cross-fades on navigation, while the bar above stays put.
+  view-transition-name: page;
   display: block;
   max-width: 1400px;
   margin: 0 auto;

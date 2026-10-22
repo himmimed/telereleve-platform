@@ -6,7 +6,7 @@
   <div class="sync reveal" style="--i: 1">
     <span class="sync-text muted" aria-live="polite">
       @if (data(); as d) {
-        Données de <span class="num">{{ loadedTime() }}</span>, actualisées toutes les 30 s
+        Données de <span class="num">{{ loadedTime() }}</span>, actualisées toutes les 30&nbsp;s
       } @else {
         Chargement des indicateurs
       }
@@ -16,6 +16,7 @@
     </button>
     <!-- Grows over the 30 s before the next refresh; restarts each time new data arrives. -->
     @for (cycle of [cycleKey()]; track cycle) {
+      <span class="live" aria-hidden="true"></span>
       <span class="sync-line" aria-hidden="true"></span>
     }
   </div>
