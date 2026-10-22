@@ -445,9 +445,19 @@ only, reduced motion respected, no decorative infinite animation.
 - **Motion tokens** in `styles.scss`: `--duration-fast` 140 ms (feedback), `--duration-base` 220 ms (hover,
   focus), `--duration-slow` 420 ms (movement between places), plus `--ease-in` and `--ease-spring` next to
   the existing `--ease-out`. Hard-coded durations in the shell and dashboard now use them.
-- **Page transitions** through Angular's `withViewTransitions` (View Transitions API): the page leaves in
-  140 ms and the next one rises in over 420 ms; the navigation bar does not move and its lime diamond glides
-  to the new link. Browsers without the API simply navigate without animation.
+- **Page changes**: a routed page fades and rises into place over 520 ms (plain CSS on the new page).
+  A first version used the browser's View Transitions API; it was dropped because it freezes the page
+  while a lazy route loads, which felt laggy, especially on the map.
+- **Navigation marker**: one marker (soft pill and lime diamond) that slides from link to link over 620 ms
+  with an in-out curve (`--ease-glide`, `--duration-glide`), instead of a diamond that popped in and out
+  per link. It is measured from the active link (`offsetLeft`, `offsetWidth`) after each navigation and on
+  resize, and does not animate on first placement.
+- **Map**: pins are now DOM markers (`divIcon`) styled in CSS, not canvas circles, so they can animate:
+  they pop in one after the other, grow on hover, and alerts send out three slow rings on arrival, then
+  stay still. The first display starts one zoom level back and flies to the meters over 1.8 s; selecting a
+  pin glides the map to it. Pins are diffed by meter id: the 60 s refresh, a selection or a filter no longer
+  redraws every pin (before, any of them cleared and rebuilt all 50 markers, which flickered), and removed
+  pins shrink away. A theme change cross-fades the tiles instead of flashing. Pins are keyboard-focusable.
 - **Chart**: a hairline under the pointer and a ringed dot on the latest value (line charts); values rise
   from the baseline in a left-to-right wave, but only when the series changes (first display, other energy
   or period). A plain 30 s refresh glides the values that changed and no longer replays the entrance.

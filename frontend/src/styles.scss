@@ -129,6 +129,9 @@ html[data-theme='dark'] {
   --duration-fast: 140ms;
   --duration-base: 220ms;
   --duration-slow: 420ms;
+  // Glide: long movements the eye should follow (the navigation marker, the map).
+  --ease-glide: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-glide: 620ms;
   --duration-enter: 640ms;
 }
 
@@ -165,6 +168,9 @@ body::before {
   background: url('/brand/zellige-ceac.webp') top left / 1100px auto repeat;
   opacity: 0.09;
   mask-image: radial-gradient(130% 100% at 0% 0%, #000 0%, transparent 70%);
+  // Own compositor layer: the masked texture is painted once and never repainted while the map pans.
+  will-change: transform;
+  contain: strict;
 }
 
 html[data-theme='dark'] body::before {
@@ -221,40 +227,17 @@ a {
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
-// Page changes (Angular view transitions): the page leaves quickly and the next one rises in a little
-// slower; the navigation bar stays still and its lime diamond glides to the new link. The rest of the
-// document does not animate, so nothing flickers.
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(page) {
-  animation: page-out var(--duration-fast) var(--ease-in) both;
-}
-
-::view-transition-new(page) {
-  animation: page-in var(--duration-slow) var(--ease-out) both;
-}
-
-::view-transition-group(nav-dot) {
-  animation-duration: var(--duration-slow);
-  animation-timing-function: var(--ease-spring);
-}
-
-@keyframes page-out {
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
+// A routed page fades and rises into place on arrival. A plain CSS animation on the new page (rather than
+// the browser's view-transition snapshot) so nothing is frozen while a lazy page loads.
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
+}
+
+main.content > :not(router-outlet) {
+  animation: page-in 520ms var(--ease-out) both;
 }
 
 h1,
@@ -340,6 +323,102 @@ tr.row-link {
 // Tactile feedback on every Material button: a 1px press.
 .mat-mdc-button-base:active:not([disabled]) {
   transform: translateY(1px);
+}
+
+// Map pins. Leaflet markers are DOM nodes created outside any component, so their styles are global.
+// Shape as well as colour (never colour alone): alerts are larger and ring out, silent meters are hollow.
+// Leaflet positions .pin-wrap with a transform, so every effect lives on the inner .pin.
+.pin-wrap {
+  background: none;
+  border: 0;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible .pin {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 4px;
+  }
+}
+
+.pin {
+  --size: 14px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  box-sizing: border-box;
+  border: 2px solid var(--app-panel);
+  border-radius: 50%;
+  background: var(--status-ok);
+  box-shadow: 0 1px 5px rgb(8 43 77 / 0.35);
+  cursor: pointer;
+  // `backwards`: the entrance only styles the delay and the run, so hover and selection can take over the
+  // transform afterwards.
+  animation: pin-in 640ms var(--ease-spring) var(--d, 0ms) backwards;
+  transition:
+    transform var(--duration-slow) var(--ease-spring),
+    box-shadow var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-in);
+
+  &:hover {
+    transform: scale(1.4);
+  }
+
+  &.pin-ALERT {
+    --size: 18px;
+    background: var(--status-alert);
+
+    // Three slow rings when the pin arrives, then still: enough to draw the eye, not a permanent pulse.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border: 2px solid var(--status-alert);
+      border-radius: 50%;
+      opacity: 0;
+      animation: pin-ring 2600ms var(--ease-out) calc(var(--d, 0ms) + 700ms) 3 both;
+    }
+  }
+
+  &.pin-SILENT {
+    border: 3px solid var(--status-silent);
+    background: var(--app-panel);
+  }
+
+  &.selected {
+    transform: scale(1.5);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--mat-sys-primary) 32%, transparent),
+      0 2px 8px rgb(8 43 77 / 0.4);
+  }
+
+  &.leaving {
+    opacity: 0;
+    transform: scale(0.3);
+    pointer-events: none;
+  }
+}
+
+@keyframes pin-in {
+  from {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+}
+
+@keyframes pin-ring {
+  from {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.8);
+  }
 }
 
 // Leaflet: blend map controls and popups with the theme.

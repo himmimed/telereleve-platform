@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -78,15 +78,58 @@ export class Shell {
     { initialValue: 0 },
   );
 
+  private readonly links = viewChild<ElementRef<HTMLElement>>('links');
+  /**
+   * The marker under the current link (soft pill and lime diamond): one element that slides from link to
+   * link, measured from the DOM. `animate` stays off for the first placement so it does not slide in from
+   * the left edge on load.
+   */
+  protected readonly marker = signal({ x: 0, w: 0, shown: false, animate: false });
+
   constructor() {
-    // Close the narrow-screen menu after navigating.
-    inject(Router)
-      .events.pipe(
+    const router = inject(Router);
+    // Close the narrow-screen menu after navigating, and move the marker once the active link has updated.
+    router.events
+      .pipe(
         filter((event) => event instanceof NavigationEnd),
         startWith(null),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.menuOpen.set(false));
+      .subscribe(() => {
+        this.menuOpen.set(false);
+        this.afterFrame(() => this.measureMarker());
+      });
+
+    // (Re)measure when the links appear (wide screens), change (roles) or are resized.
+    effect((onCleanup) => {
+      const element = this.links()?.nativeElement;
+      this.nav();
+      if (!element) {
+        return;
+      }
+      this.afterFrame(() => this.measureMarker());
+      if (typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const observer = new ResizeObserver(() => this.measureMarker());
+      observer.observe(element);
+      onCleanup(() => observer.disconnect());
+    });
+  }
+
+  private afterFrame(task: () => void): void {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(task);
+    }
+  }
+
+  private measureMarker(): void {
+    const active = this.links()?.nativeElement.querySelector<HTMLElement>('a.link.active');
+    if (!active) {
+      this.marker.update((m) => ({ ...m, shown: false }));
+      return;
+    }
+    this.marker.update((m) => ({ x: active.offsetLeft, w: active.offsetWidth, shown: true, animate: m.shown }));
   }
 
   protected logout(): void {

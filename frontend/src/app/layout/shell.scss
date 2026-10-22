@@ -77,9 +77,48 @@
 
 // Text links, centered as on the website.
 .links {
+  position: relative;
   display: flex;
   justify-content: center;
   gap: 6px;
+}
+
+// One marker for the whole bar: a soft pill behind the current link and the lime diamond under it. On a
+// page change it glides to the new link over 620 ms with an in-out curve, slow enough to follow with the eye.
+.marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--w, 0px);
+  transform: translateX(var(--x, 0px));
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--ceac-blue) 10%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, width;
+
+  &.shown {
+    opacity: 1;
+  }
+
+  &.animate {
+    transition:
+      transform var(--duration-glide) var(--ease-glide),
+      width var(--duration-glide) var(--ease-glide),
+      opacity var(--duration-base) var(--ease-out);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -3px;
+    width: 7px;
+    height: 7px;
+    background: var(--ceac-lime-bright);
+    transform: translateX(-50%) rotate(45deg);
+  }
 }
 
 .link {
@@ -92,7 +131,7 @@
   color: var(--ceac-ink);
   font-weight: 500;
   text-decoration: none;
-  transition: background-color var(--duration-base) var(--ease-out), color var(--duration-base) var(--ease-out);
+  transition: background-color var(--duration-base) var(--ease-out), color var(--duration-slow) var(--ease-out);
 
   &:hover {
     background: color-mix(in srgb, var(--ceac-blue) 7%, transparent);
@@ -102,28 +141,8 @@
     transform: translateY(1px);
   }
 
-  // Current page: brand blue and a small lime diamond, as on ceacmaroc.com.
-  &::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    bottom: -3px;
-    width: 7px;
-    height: 7px;
-    background: var(--ceac-lime-bright);
-    transform: translateX(-50%) rotate(45deg) scale(0);
-    transition: transform var(--duration-slow) var(--ease-spring);
-  }
-
   &.active {
     color: var(--ceac-blue);
-
-    &::after {
-      transform: translateX(-50%) rotate(45deg) scale(1);
-      // Shared across links: on a page change the browser glides the diamond from the old link to the new
-      // one (view transition, see styles.scss).
-      view-transition-name: nav-dot;
-    }
   }
 }
 
@@ -259,8 +278,6 @@
 }
 
 .content {
-  // The page that cross-fades on navigation, while the bar above stays put.
-  view-transition-name: page;
   display: block;
   max-width: 1400px;
   margin: 0 auto;

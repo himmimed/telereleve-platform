@@ -35,6 +35,8 @@
 
 .map-panel {
   position: relative;
+  // Keeps Leaflet's high z-indexes (panes, controls) inside the panel, under the sticky top bar.
+  isolation: isolate;
   height: max(480px, calc(100dvh - 190px));
   overflow: hidden;
 }
@@ -65,7 +67,7 @@
   border-radius: var(--radius-surface);
   background: var(--app-panel-raised);
   box-shadow: 0 12px 32px var(--app-shadow);
-  animation: card-in 220ms var(--ease-out) both;
+  animation: card-in var(--duration-slow) var(--ease-out) both;
 }
 
 .card-head {
@@ -99,7 +101,7 @@
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px) scale(0.98);
   }
 }
 

@@ -9,7 +9,15 @@
     </a>
 
     @if (!compact()) {
-      <nav class="links" aria-label="Navigation principale">
+      <nav class="links" #links aria-label="Navigation principale">
+        <span
+          class="marker"
+          aria-hidden="true"
+          [class.shown]="marker().shown"
+          [class.animate]="marker().animate"
+          [style.--x]="marker().x + 'px'"
+          [style.--w]="marker().w + 'px'"
+        ></span>
         @for (item of nav(); track item.path) {
           <a
             class="link"
