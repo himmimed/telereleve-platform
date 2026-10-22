@@ -436,11 +436,11 @@ agreement (`frontend/public/brand/`, 73 KB and 447 KB, WebP):
 colour-vision deficiency (D11).
 
 ## D38 - Motion system and finishing touches, guided by UI/UX Pro Max
-**Context.** After the CEAC redesign (D37), a second pass with the UI/UX Pro Max skill (installed in
-`~/.claude/skills`) to make the interface feel more finished without changing its look. The skill's own
-palette (dark navy, neon accents) was deliberately **not** used: the brand stays as in D37. Only its
-interaction rules were applied: shared motion tokens, entering slower than leaving, transform and opacity
-only, reduced motion respected, no decorative infinite animation.
+**Context.** After the CEAC redesign (D37), a second pass guided by the UI/UX Pro Max design-guideline
+database, to make the interface feel more finished without changing its look. Its suggested palette (dark
+navy, neon accents) was deliberately **not** used: the brand stays as in D37. Only its interaction rules
+were applied: shared motion tokens, entering slower than leaving, transform and opacity only, reduced
+motion respected, no decorative infinite animation.
 **Changes:**
 - **Motion tokens** in `styles.scss`: `--duration-fast` 140 ms (feedback), `--duration-base` 220 ms (hover,
   focus), `--duration-slow` 420 ms (movement between places), plus `--ease-in` and `--ease-spring` next to

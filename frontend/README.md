@@ -2,7 +2,7 @@
 
 Angular 22 console of the Télérelève platform. User interface in French.
 
-- Angular Material 3, customised (teal accent, Geist / Geist Mono, light and dark themes)
+- Angular Material 3 with the CEAC brand theme (blue and a lime accent, Geist / Geist Mono, light and dark themes)
 - Chart.js through ng2-charts, Leaflet with OpenStreetMap tiles, Phosphor icons
 - Standalone components, signals, zoneless change detection, lazy-loaded pages
 - Unit tests with Vitest
