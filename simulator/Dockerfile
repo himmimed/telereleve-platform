@@ -14,6 +14,9 @@ RUN --mount=type=cache,target=/root/.m2 sh mvnw -B -q package -DskipTests \
 # --- Runtime stage ---------------------------------------------------------------------------
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S app -G app
+# Where the simulator remembers when its anomalies started (a volume in docker-compose.yml): the directory
+# is created here, owned by the app user, so a new volume inherits that ownership.
+RUN mkdir /state && chown app:app /state
 WORKDIR /app
 COPY --from=build /workspace/simulator.jar simulator.jar
 USER app

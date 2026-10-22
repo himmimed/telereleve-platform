@@ -473,3 +473,26 @@ motion respected, no decorative infinite animation.
 `prefers-reduced-motion` (the global rule, and the chart disables its animation).
 **Limit.** Animation is checked by eye and by build, not by unit tests (jsdom has no canvas or view
 transitions).
+
+## D39 - The simulator's anomaly start survives restarts
+**Context.** Injected anomalies started relative to the simulator's own start time
+(`SIM_ANOMALY_DELAY_MINUTES`, D28). A meter's readings are a pure function of (meter, anomaly, time), so they
+are reproducible only if the anomaly starts at the same instant. Restarting the simulator on an existing
+database moved that instant, replayed a history contradicting the stored one and raised real A2 / A4 alerts
+on the anomalous meters.
+**Decision.** The start is resolved once and kept:
+- `SIM_ANOMALY_START` (ISO-8601 UTC), when set, is used as is;
+- otherwise the start is computed from the delay on the first run, written to `SIM_STATE_DIR` (a Docker volume
+  mounted at `/state` in compose) and read back at every later start;
+- with neither, the previous behaviour remains (fine for a throwaway database).
+An absolute start is not checked against the backfilled history window: a restart days later legitimately
+has a saved start older than the window.
+**Why not only `SIM_ANOMALY_START`?** It would fix the problem only for whoever sets it; the default demo
+would still break on a restart. Remembering the start makes the default correct.
+**Failure handling.** An unreadable saved value is replaced; a state directory that cannot be written logs a
+warning and the simulator still starts (it only loses the memory). A start the simulator cannot save must
+not stop the platform from running.
+**Verification.** Nine new unit tests, and an end-to-end check on a separate compose project: five alerts for
+five anomalies, simulator restarted on the same database, identical alert set afterwards.
+**Limit.** `docker compose down -v` is still the way to a fresh scenario; deleting only the database volume
+keeps the old start.

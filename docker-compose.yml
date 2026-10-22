@@ -109,6 +109,13 @@ services:
       SIM_ANOMALIES: ${SIM_ANOMALIES-CEAC-E-000005:DECREASING_INDEX,CEAC-E-000008:VOLTAGE,CEAC-E-000011:SILENT,CEAC-E-000012:SPIKE,CEAC-W-000004:ZERO}
       SIM_ANOMALY_PERCENT: ${SIM_ANOMALY_PERCENT:-0}
       SIM_ANOMALY_DELAY_MINUTES: ${SIM_ANOMALY_DELAY_MINUTES:--1500}
+      # The anomaly start is computed once, saved in the volume below and reused at every restart, so a
+      # restart replays the same history as the one already stored (docs/decisions.md D39). An explicit
+      # SIM_ANOMALY_START in .env takes precedence.
+      SIM_ANOMALY_START: ${SIM_ANOMALY_START:-}
+      SIM_STATE_DIR: /state
+    volumes:
+      - simulator-state:/state
 
   frontend:
     build: ./frontend
@@ -128,3 +135,4 @@ services:
 volumes:
   timescale-data:
   mosquitto-data:
+  simulator-state:

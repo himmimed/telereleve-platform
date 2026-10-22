@@ -39,7 +39,7 @@ public final class SimulatorApplication {
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         Map<String, InjectedAnomaly> anomalies = AnomalyPlan.build(meters, config.anomalies(),
-                config.anomalyPercent(), now.plus(config.anomalyDelay()));
+                config.anomalyPercent(), AnomalyAnchor.resolve(config, now));
 
         MeterSimulator simulator = new MeterSimulator(config, meters, anomalies);
         CountDownLatch stopped = new CountDownLatch(1);

@@ -3,7 +3,9 @@ package ma.ceac.telereleve.simulator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -58,6 +60,40 @@ class SimulatorConfigTest {
         assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
                 "SIM_BACKFILL_DAYS", "1", "SIM_ANOMALY_DELAY_MINUTES", "-1500")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readsAnAbsoluteAnomalyStartAndTheStateDirectory() {
+        SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
+                "SIM_ANOMALY_START", "2026-10-20T09:00:00Z", "SIM_STATE_DIR", "/state"));
+
+        assertThat(config.anomalyStart()).isEqualTo(Instant.parse("2026-10-20T09:00:00Z"));
+        assertThat(config.stateDir()).isEqualTo(Path.of("/state"));
+    }
+
+    @Test
+    void anAbsoluteStartIsNotLimitedToTheBackfilledHistory() {
+        // A restart days after the first start: the saved start is older than the history that is replayed.
+        SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
+                "SIM_BACKFILL_DAYS", "1", "SIM_ANOMALY_START", "2026-01-01T00:00:00Z"));
+
+        assertThat(config.anomalyStart()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void leavesTheAnomalyStartAndStateDirectoryUnsetByDefault() {
+        SimulatorConfig config = SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw"));
+
+        assertThat(config.anomalyStart()).isNull();
+        assertThat(config.stateDir()).isNull();
+    }
+
+    @Test
+    void rejectsAnAnomalyStartThatIsNotAnInstant() {
+        assertThatThrownBy(() -> SimulatorConfig.fromEnvironment(Map.of("MQTT_PASSWORD", "x", "SIM_BACKEND_PASSWORD", "pw",
+                "SIM_ANOMALY_START", "yesterday")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("SIM_ANOMALY_START");
     }
 
     @Test

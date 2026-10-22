@@ -1,6 +1,9 @@
 package ma.ceac.telereleve.simulator;
 
+import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 /**
@@ -14,6 +17,9 @@ import java.util.Map;
  * @param anomalyPercent share of the other meters given a random anomaly (SIM_ANOMALY_PERCENT, 0-100)
  * @param anomalyDelay   anomalies start this long after the simulator (SIM_ANOMALY_DELAY_MINUTES);
  *                       negative = in the past, within the backfilled history
+ * @param anomalyStart   exact instant at which the anomalies start, ISO-8601 UTC (SIM_ANOMALY_START);
+ *                       null = derive it from the delay (see {@link AnomalyAnchor})
+ * @param stateDir       directory where the derived start is remembered across restarts (SIM_STATE_DIR); null = nowhere
  * @param backfillDays   readings of the past N days published at startup, every 15 min (SIM_BACKFILL_DAYS)
  * @param backendUsername technical account used to read the meter list (SIM_BACKEND_USERNAME)
  * @param backendPassword its password (SIM_BACKEND_PASSWORD)
@@ -29,6 +35,8 @@ public record SimulatorConfig(
         String anomalies,
         int anomalyPercent,
         Duration anomalyDelay,
+        Instant anomalyStart,
+        Path stateDir,
         int backfillDays,
         String backendUsername,
         String backendPassword) {
@@ -55,9 +63,13 @@ public record SimulatorConfig(
         if (backfillDays < 0 || backfillDays > 31) {
             throw new IllegalArgumentException("SIM_BACKFILL_DAYS must be between 0 and 31");
         }
+        Instant anomalyStart = parseStart(env.get("SIM_ANOMALY_START"));
+        String stateDirValue = env.get("SIM_STATE_DIR");
+        Path stateDir = stateDirValue == null || stateDirValue.isBlank() ? null : Path.of(stateDirValue.trim());
         // A negative delay starts the anomalies in the past, inside the backfilled history, so every
-        // rule (A1 needs 24 h without consumption) can be demonstrated within minutes.
-        if (delayMinutes < -backfillDays * 1440L) {
+        // rule (A1 needs 24 h without consumption) can be demonstrated within minutes. An absolute start
+        // is the caller's own choice and is not checked against the history window.
+        if (anomalyStart == null && delayMinutes < -backfillDays * 1440L) {
             throw new IllegalArgumentException("SIM_ANOMALY_DELAY_MINUTES cannot start the anomalies before the backfilled history");
         }
         String backendPassword = env.get("SIM_BACKEND_PASSWORD");
@@ -77,9 +89,23 @@ public record SimulatorConfig(
                 anomalies,
                 percent,
                 Duration.ofMinutes(delayMinutes),
+                anomalyStart,
+                stateDir,
                 backfillDays,
                 env.getOrDefault("SIM_BACKEND_USERNAME", "simulateur"),
                 backendPassword);
+    }
+
+    private static Instant parseStart(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    "SIM_ANOMALY_START must be an ISO-8601 UTC instant such as 2026-10-21T09:00:00Z, got: " + value);
+        }
     }
 
     private static String stripTrailingSlash(String url) {
@@ -90,8 +116,8 @@ public record SimulatorConfig(
     @Override
     public String toString() {
         return ("SimulatorConfig[mqttUrl=%s, mqttUsername=%s, backendUrl=%s, interval=%s, maxMeters=%d, clientId=%s, "
-                + "anomalies=%s, anomalyPercent=%d, anomalyDelay=%s, backfillDays=%d, backendUsername=%s]")
+                + "anomalies=%s, anomalyPercent=%d, anomalyDelay=%s, anomalyStart=%s, stateDir=%s, backfillDays=%d, backendUsername=%s]")
                 .formatted(mqttUrl, mqttUsername, backendUrl, interval, maxMeters, clientId,
-                        anomalies, anomalyPercent, anomalyDelay, backfillDays, backendUsername);
+                        anomalies, anomalyPercent, anomalyDelay, anomalyStart, stateDir, backfillDays, backendUsername);
     }
 }

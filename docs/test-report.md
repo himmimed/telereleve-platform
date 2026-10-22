@@ -1,8 +1,8 @@
 # Test report
 
-All tests pass on 2026-10-15:
+All tests pass on 2026-10-22:
 - backend: 166 unit tests and 48 integration tests;
-- simulator: 35 tests;
+- simulator: 44 tests;
 - frontend: 71 tests.
 
 Backend line coverage is 96 % (JaCoCo, unit and integration tests together), including 96.5 % for the
@@ -32,7 +32,7 @@ The coverage report is written to `backend/target/site/jacoco/index.html`.
 
 ```sh
 cd simulator
-./mvnw verify               # 35 tests
+./mvnw verify               # 44 tests
 cd ../frontend
 npx ng test --watch=false   # Vitest, 71 tests
 ```
@@ -160,6 +160,7 @@ The application shell itself loads in 0.18 s (496 KB transferred). The map draws
 | 3 | `AlertLifecycleIT` | Integration (TimescaleDB) | One A4 alert for repeated decreases, never auto-resolved; A5 auto-resolved then reopened as a new alert; A3 raised by the schedule and cleared when the meter reports; disabled rule raises nothing; PATCH transitions (400 / 409), order and filters of GET /api/alerts, open alerts in meter details |
 | 3 | `MqttIngestionIT` (extended) | Integration (TimescaleDB + Mosquitto) | Specified scenario completed: 10 readings, re-published, still 10 rows **and exactly one open A4 alert** |
 | 3 | `MeterBehaviourTest`, `AnomalyPlanTest` | Simulator unit | Each injected anomaly produces its symptom (frozen index, 5x hour, one decrease, 258-262 V, no publication); explicit / percentage plans, deterministic, no voltage anomaly on water meters, typo detection |
+| after 6 | `AnomalyAnchorTest`, `SimulatorConfigTest` (extended) | Simulator unit | The anomaly start is kept across restarts: explicit `SIM_ANOMALY_START` wins and is never written, the first derived start is saved and read back, an unreadable or unwritable state directory never blocks the start; invalid values are refused |
 | 4 | `SecurityRulesTest` | Web slice (MockMvc + SecurityConfig) | Full role matrix of every route: 401 without token, 403 per role (technician POST /api/meters, operator /api/users, admin PATCH alert...), unlisted route refused, public login / health / Swagger |
 | 4 | `UserServiceTest` | Unit (Mockito) | BCrypt hash, password required on create, duplicate username, admin cannot demote / disable / delete themself, last admin protected, alerts unassigned on delete or role change |
 | 4 | `AlertServiceRolesTest`, `AlertUpdateRequestTest` | Unit | Technician limited to their own alerts, cannot reassign nor reopen; assignment only to an enabled technician; absent `assignedTo` vs `null` (D30) |
@@ -187,11 +188,12 @@ The application shell itself loads in 0.18 s (496 KB transferred). The map draws
 
 ## Known limits and next steps
 
-- **No GitHub remote yet:** the CI workflow has not run on GitHub. Its commands were run locally.
-- **Simulator restarts:** injected anomalies start relative to the simulator's own start time. Restarting
-  it on an existing database replays a history that contradicts the stored one for the anomalous meters, and
-  raises real A2 / A4 alerts there. A fresh stack (`docker compose down -v`) is consistent. An absolute
-  start time (`SIM_ANOMALY_START`) would remove this.
+- **Continuous integration:** the workflow runs on GitHub Actions (all four jobs passed on the first push).
+- **Simulator restarts (fixed, D39):** the anomaly start is now remembered across restarts. Verified on a clean
+  stack: five alerts for the five injected anomalies; after restarting the simulator on the same database
+  (history replayed, six more minutes of live readings) the alert set was identical, with no new or changed
+  alert. One limit remains: if only the database volume is deleted and the simulator's state volume is
+  kept, the saved start is older than the new history; use `docker compose down -v` for a fresh scenario.
 - **Ingestion scaling:** one ordered consumer handles 67-116 readings/s on the test laptop; beyond that,
   partition the consumers by meter.
 - **Data retention:** no retention or compression policy yet (72 MB for 532 000 readings, about 135 bytes
