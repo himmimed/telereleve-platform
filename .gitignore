@@ -30,3 +30,8 @@ Thumbs.db
 docs/rapport.md
 docs/rapport-latex/
 docs/soutenance/
+docs/report-latex-en/
+docs/rapport-latex-fr/
+
+# Launch videos made with /brag-slim (local only)
+brag-output*/
